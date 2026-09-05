@@ -9,8 +9,10 @@ export function migrateState(value: unknown): GameState | null {
   if (state.currentRun.endingId === "delete" && state.currentRun.ownAnswerText) return null;
   const current = state.currentRun as GameState["currentRun"];
   current.riskChoices ??= {};
+  current.riskConsequences ??= {};
   current.unlockedExitIds ??= [];
   current.meltdown ??= false;
+  current.meltdownReason ??= null;
   current.retryAvailable ??= false;
   if (state.previousRun) {
     const previous = state.previousRun as Partial<PreviousRun>;

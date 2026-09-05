@@ -37,13 +37,17 @@ describe("本地存档", () => {
   it("旧存档缺失污染分支字段时补默认值", () => {
     const state = createInitialState() as any;
     delete state.currentRun.riskChoices;
+    delete state.currentRun.riskConsequences;
     delete state.currentRun.unlockedExitIds;
     delete state.currentRun.meltdown;
+    delete state.currentRun.meltdownReason;
     delete state.currentRun.retryAvailable;
     const migrated = migrateState(state);
     expect(migrated?.currentRun.riskChoices).toEqual({});
+    expect(migrated?.currentRun.riskConsequences).toEqual({});
     expect(migrated?.currentRun.unlockedExitIds).toEqual([]);
     expect(migrated?.currentRun.meltdown).toBe(false);
+    expect(migrated?.currentRun.meltdownReason).toBeNull();
     expect(migrated?.currentRun.retryAvailable).toBe(false);
   });
 });

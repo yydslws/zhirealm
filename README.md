@@ -22,6 +22,22 @@ npm run test:e2e
 npm run build
 ```
 
+## 部署与更新
+
+生产环境从 GitHub 的 `main` 分支自动部署到 Vercel。首次在 Vercel 导入私有仓库 `yydslws/zhirealm`，选择 Next.js，并配置 `DEEPSEEK_API_KEY`、`AI_BASE_URL` 与 `DEEPSEEK_MODEL` 三个环境变量（Production、Preview、Development）。
+
+日常更新：
+
+```bash
+npm test
+npm run build
+git add .
+git commit -m "描述本次修改"
+git push origin main
+```
+
+推送完成后，Vercel 会自动构建并更新线上版本；部署失败时，生产站点保持上一条成功部署。环境变量只保存在 Vercel 或本地 `.env.local`，不得提交到仓库。
+
 ## Demo Mode
 
 访问 <http://localhost:3000/?demo=true>，可跳到发布、强制 C 结局或重置存档。

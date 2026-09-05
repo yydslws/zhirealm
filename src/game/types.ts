@@ -46,8 +46,10 @@ export type CurrentRun = {
   questionAnswerCount: number;
   actionIds: string[];
   riskChoices: Partial<Record<RiskNodeId, RiskChoice>>;
+  riskConsequences: Partial<Record<RiskNodeId, string>>;
   unlockedExitIds: ExitId[];
   meltdown: boolean;
+  meltdownReason: string | null;
   retryAvailable: boolean;
 };
 

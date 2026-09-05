@@ -2,10 +2,11 @@ import { clues } from "@/src/content/clues";
 import { draftBase } from "@/src/content/p05";
 import type { CurrentRun } from "@/src/game/types";
 
-export type PollutionBand = "stable" | "unstable" | "meltdown";
+export type PollutionBand = "stable" | "unstable" | "critical" | "meltdown";
 
 export function pollutionBand(pollution: number): PollutionBand {
   if (pollution >= 4) return "meltdown";
+  if (pollution >= 3) return "critical";
   if (pollution >= 2) return "unstable";
   return "stable";
 }

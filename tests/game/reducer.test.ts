@@ -53,6 +53,22 @@ describe("知境主线状态机", () => {
     const blocked = gameReducer({ ...state, currentRun: { ...state.currentRun, hasPublishedOwnAnswer: true } }, { type: "TRIGGER_EXIT", endingId: "delete", actionId: "blocked-delete" });
     expect(blocked.currentRun.pendingEndingId).toBeNull();
   });
+
+  it("C2 为安全路线提供保底出口，危险证据显示专属后果", () => {
+    let state = gameReducer(createInitialState(), { type: "VIEW_CLUE", clueId: "C2", actionId: "safe-clue" });
+    expect(state.currentRun.unlockedExitIds).toEqual(["death_404"]);
+    state = gameReducer(state, { type: "CHOOSE_RISK", node: "evidence", choice: "danger", actionId: "danger-evidence" });
+    expect(state.currentRun.riskConsequences.evidence).toContain("宋砚");
+  });
+
+  it("污染 3 为临界状态，并记录失控原因", () => {
+    expect(pollutionBand(3)).toBe("critical");
+    let state = { ...createInitialState(), phase: 5 };
+    for (const node of ["comments", "dorm", "rules", "evidence"] as const) {
+      state = gameReducer(state, { type: "CHOOSE_RISK", node, choice: "danger", actionId: `critical-${node}` });
+    }
+    expect(state.currentRun.meltdownReason).toContain("模糊证据");
+  });
   it("展开折叠评论只把 17 变成 18 一次", () => {
     const initial = createInitialState();
     const opened = gameReducer(initial, { type: "OPEN_FOLDED_COMMENTS", actionId: "a1" });
@@ -116,6 +132,7 @@ describe("知境主线状态机", () => {
   it("只有结局第三屏重新进入才增加周目并保留摘要", () => {
     let state = createInitialState();
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C2", actionId: "c2" });
+    state = gameReducer(state, { type: "CHOOSE_RISK", node: "dorm", choice: "danger", actionId: "dorm-exit" });
     state = gameReducer(state, { type: "PUBLISH_ANSWER", actionId: "p1" });
     state = gameReducer(state, { type: "CHOOSE_ENDING", endingId: "exit", actionId: "e1" });
     state = gameReducer(state, { type: "CONFIRM_ENDING", actionId: "e2" });

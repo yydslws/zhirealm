@@ -1,6 +1,6 @@
 import { buildDraft } from "@/src/game/derive";
 import { canChooseEnding, canPublish } from "@/src/game/guards";
-import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskNodeId } from "@/src/game/types";
+import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskChoice, RiskNodeId } from "@/src/game/types";
 
 const initialRun = (): CurrentRun => ({
   hasReadP01Answer: false, nightNoticeVisible: false, foldedCommentCount: 17,
@@ -11,7 +11,7 @@ const initialRun = (): CurrentRun => ({
   ownAnswerId: null, ownAnswerRunId: null, ownAnswerText: null, ownAnswerVisible: false, ownAnswerDeleted: false,
   ownAnswerBindingActive: false, phase06Available: false, endingActionLock: false, endingSettled: false,
   endingId: null, endingEventId: null, endingScreenIndex: 0, pendingEndingId: null,
-  bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, unlockedExitIds: [], meltdown: false, retryAvailable: false,
+  bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, riskConsequences: {}, unlockedExitIds: [], meltdown: false, meltdownReason: null, retryAvailable: false,
 });
 
 export function createInitialState(): GameState {
@@ -40,10 +40,17 @@ function resetForNextRun(state: GameState): GameState {
 
 const exitForRisk: Partial<Record<RiskNodeId, ExitId>> = { comments: "death_404", dorm: "exit", evidence: "delete" };
 const minPhaseForRisk: Record<RiskNodeId, number> = { comments: 2, dorm: 3, rules: 3, evidence: 4, draft: 5 };
+const consequenceForRisk: Record<RiskNodeId, Record<RiskChoice, string>> = {
+  comments: { safe: "你停在第十八条之前。评论区暂时没有继续增长。", danger: "第十八条不是新增的。它一直在这里，只是之前没人能看见。" },
+  dorm: { safe: "摘要没有署名，也没有时间。", danger: "原始附件的时间戳停在 02:07，像是有人提前替你打开过。" },
+  rules: { safe: "你把规则标为待核实，暂时没有把它当成出口。", danger: "规则末尾多出一行：相信它的人，会先忘记自己为什么点开。" },
+  evidence: { safe: "你只保留了能确认来源的证据。", danger: "模糊证据里出现了宋砚的名字，随后又被划掉。" },
+  draft: { safe: "你把草稿留在这里，先回去核实。", danger: "草稿自动补完了最后一句：不要让它知道你已经看见。" },
+};
 
 function settleMeltdown(state: GameState): GameState {
   if (state.pollution < 4 || state.currentRun.meltdown || state.currentRun.endingSettled) return state;
-  const r = { ...state.currentRun, meltdown: true, retryAvailable: true, endingSettled: true, endingId: "meltdown" as const, endingEventId: `meltdown-${state.run}`, endingScreenIndex: 1 };
+  const r = { ...state.currentRun, meltdown: true, meltdownReason: state.currentRun.riskConsequences.evidence ?? "你在内容失真前继续相信了它。", retryAvailable: true, endingSettled: true, endingId: "meltdown" as const, endingEventId: `meltdown-${state.run}`, endingScreenIndex: 1 };
   return { ...state, pollution: 4, scene: "ending", phase: 6, timeStopped: true, currentRun: r, previousRun: summarizeRun(state, r) };
 }
 
@@ -63,7 +70,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const choices = { ...state.currentRun.riskChoices, [action.node]: action.choice };
       const exit = action.choice === "danger" ? exitForRisk[action.node] : undefined;
       const exits = exit && !state.currentRun.unlockedExitIds.includes(exit) ? [...state.currentRun.unlockedExitIds, exit] : state.currentRun.unlockedExitIds;
-      next = { ...state, pollution: state.pollution + (action.choice === "danger" ? 1 : 0), currentRun: { ...state.currentRun, riskChoices: choices, unlockedExitIds: exits } };
+      const consequences = { ...state.currentRun.riskConsequences, [action.node]: consequenceForRisk[action.node][action.choice] };
+      const draft = action.node === "draft" && action.choice === "danger" ? buildDraft(state.currentRun) : state.currentRun.draftPreviewText;
+      next = { ...state, scene: action.node === "draft" && action.choice === "danger" ? "draft" : state.scene, phase: action.node === "draft" && action.choice === "danger" ? 5 : state.phase, pollution: state.pollution + (action.choice === "danger" ? 1 : 0), currentRun: { ...state.currentRun, riskChoices: choices, riskConsequences: consequences, unlockedExitIds: exits, draftPreviewText: draft } };
       break;
     }
     case "REPLY_USER_404":
@@ -78,7 +87,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "VIEW_CLUE": {
       const seen = state.currentRun.seenClueIds.includes(action.clueId) ? state.currentRun.seenClueIds : [...state.currentRun.seenClueIds, action.clueId];
       const unlock = action.clueId === "C2" || action.clueId === "C4";
-      next = { ...state, scene: "investigation", phase: Math.max(state.phase, 4), gameTime: "02:07", currentRun: { ...state.currentRun, seenClueIds: seen, draftAvailable: state.currentRun.draftAvailable || unlock, phase05Available: state.currentRun.phase05Available || unlock, draftUnlockedBy: unlock && !state.currentRun.draftUnlockedBy.includes(action.clueId) ? [...state.currentRun.draftUnlockedBy, action.clueId] : state.currentRun.draftUnlockedBy } };
+      const safeExit: ExitId | null = action.clueId === "C2" ? "death_404" : action.clueId === "C4" ? "delete" : null;
+      const exits = safeExit && !state.currentRun.unlockedExitIds.includes(safeExit) ? [...state.currentRun.unlockedExitIds, safeExit] : state.currentRun.unlockedExitIds;
+      next = { ...state, scene: "investigation", phase: Math.max(state.phase, 4), gameTime: "02:07", currentRun: { ...state.currentRun, seenClueIds: seen, unlockedExitIds: exits, draftAvailable: state.currentRun.draftAvailable || unlock, phase05Available: state.currentRun.phase05Available || unlock, draftUnlockedBy: unlock && !state.currentRun.draftUnlockedBy.includes(action.clueId) ? [...state.currentRun.draftUnlockedBy, action.clueId] : state.currentRun.draftUnlockedBy } };
       break;
     }
     case "OPEN_DRAFT":

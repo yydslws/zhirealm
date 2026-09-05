@@ -8,12 +8,15 @@ const nodes: Array<{ id: RiskNodeId; title: string; safe: string; danger: string
   { id: "draft", title: "草稿发布", safe: "返回调查", danger: "未完成核实直接发布", minPhase: 5 },
 ];
 
-export function RiskChoicePanel({ state, choose }: { state: GameState; choose: (node: RiskNodeId, choice: RiskChoice) => void }) {
+export function RiskChoicePanel({ state, node: nodeId, choose }: { state: GameState; node: RiskNodeId; choose: (node: RiskNodeId, choice: RiskChoice) => void }) {
   if (state.currentRun.meltdown || state.currentRun.hasPublishedOwnAnswer || state.currentRun.endingSettled) return null;
-  const visible = nodes.filter((node) => state.phase >= node.minPhase && (node.id !== "draft" || state.currentRun.draftAvailable));
-  if (!visible.length) return null;
-  return <section className="card risk-panel"><h3>今晚要怎么做</h3><p className="meta">选择后不可撤销。危险操作可能让页面更快失控。</p>{visible.map((node) => {
-    const selected = state.currentRun.riskChoices[node.id];
-    return <div className="risk-node" key={node.id}><strong>{node.title}</strong>{selected ? <span className={selected === "danger" ? "risk-danger" : "risk-safe"}>{selected === "danger" ? node.danger : node.safe} · 已选择</span> : <div className="actions"><button className="secondary" onClick={() => choose(node.id, "safe")}>{node.safe}</button><button className="danger" onClick={() => choose(node.id, "danger")}>{node.danger}</button></div>}</div>;
-  })}</section>;
+  const node = nodes.find((item) => item.id === nodeId)!;
+  if (state.phase < node.minPhase || (nodeId === "draft" && !state.currentRun.draftAvailable)) return null;
+  const selected = state.currentRun.riskChoices[nodeId];
+  const consequence = state.currentRun.riskConsequences[nodeId];
+  const chooseDanger = () => {
+    if (state.pollution >= 3 && !window.confirm("内容正在被替换。继续这个操作会让页面失控，仍要继续吗？")) return;
+    choose(nodeId, "danger");
+  };
+  return <section className="card risk-panel"><h3>{node.title}</h3>{selected ? <div className="risk-node"><span className={selected === "danger" ? "risk-danger" : "risk-safe"}>{selected === "danger" ? node.danger : node.safe}</span><p>{consequence}</p></div> : <><p className="meta">选择后不可撤销。危险操作可能让页面更快失控。</p><div className="actions"><button className="secondary" onClick={() => choose(nodeId, "safe")}>{node.safe}</button><button className="danger" onClick={chooseDanger}>{node.danger}</button></div></>}</section>;
 }
