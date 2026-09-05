@@ -63,7 +63,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, phase: Math.max(state.phase, 1), currentRun: { ...state.currentRun, hasReadP01Answer: true } };
       break;
     case "OPEN_FOLDED_COMMENTS":
-      if (!state.currentRun.hasSeenUser404Comment) next = { ...state, scene: "comments", phase: 2, gameTime: "02:00", pollution: state.pollution + 1, currentRun: { ...state.currentRun, foldedCommentCount: 18, hasSeenUser404Comment: true } };
+      if (!state.currentRun.hasSeenUser404Comment) next = { ...state, scene: "comments", phase: 2, gameTime: "02:00", pollution: state.pollution + 1, currentRun: { ...state.currentRun, foldedCommentCount: 18, hasSeenUser404Comment: true, riskChoices: { ...state.currentRun.riskChoices, comments: "danger" }, riskConsequences: { ...state.currentRun.riskConsequences, comments: consequenceForRisk.comments.danger } } };
       break;
     case "CHOOSE_RISK": {
       if (state.currentRun.riskChoices[action.node] || state.currentRun.meltdown || state.currentRun.endingSettled || state.phase < minPhaseForRisk[action.node] || (action.node === "draft" && !state.currentRun.draftAvailable)) break;
@@ -98,7 +98,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "PUBLISH_ANSWER":
       if (canPublish(state)) {
         const text = state.currentRun.draftPreviewText ?? buildDraft(state.currentRun);
-        next = { ...state, scene: "ending", phase: 6, gameTime: "02:07", timeStopped: true, currentRun: { ...state.currentRun, draftPreviewText: text, publishSnapshotText: text, hasPublishedOwnAnswer: true, ownAnswerRegistered: true, ownAnswerId: `answer-${state.run}`, ownAnswerRunId: state.run, ownAnswerText: text, ownAnswerVisible: true, ownAnswerDeleted: false, ownAnswerBindingActive: true, phase06Available: true, questionAnswerCount: 119 } };
+        next = { ...state, scene: "ending", phase: 6, gameTime: "02:07", timeStopped: true, pollution: state.pollution + 1, currentRun: { ...state.currentRun, riskChoices: { ...state.currentRun.riskChoices, draft: "danger" }, riskConsequences: { ...state.currentRun.riskConsequences, draft: consequenceForRisk.draft.danger }, draftPreviewText: text, publishSnapshotText: text, hasPublishedOwnAnswer: true, ownAnswerRegistered: true, ownAnswerId: `answer-${state.run}`, ownAnswerRunId: state.run, ownAnswerText: text, ownAnswerVisible: true, ownAnswerDeleted: false, ownAnswerBindingActive: true, phase06Available: true, questionAnswerCount: 119 } };
       }
       break;
     case "CHOOSE_ENDING":
@@ -134,7 +134,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, previousRun: null };
       break;
     case "CHAT_NPC":
-      next = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user", text: action.text }, { role: "assistant", text: action.reply }] } };
+      next = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user", text: action.text, npc: action.npc }, { role: "assistant", text: action.reply, npc: action.npc }] } };
       break;
   }
   if (next === state) return state;

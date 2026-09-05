@@ -5,8 +5,8 @@ import type { ChatMessage, NpcId } from "@/src/game/types";
 
 const npcs: Array<[NpcId, string]> = [["user404", "用户不存在"], ["dormManager", "宿管阿姨"], ["author", "南楼旧床板"]];
 
-export function ChatPanel({ phase, run, context, history, onMessage }: { phase: number; run: number; context: string[]; history: ChatMessage[]; onMessage: (npc: NpcId, text: string, reply: string) => void }) {
-  const [npc, setNpc] = useState<NpcId>("user404");
+export function ChatPanel({ phase, run, context, history, onMessage, fixedNpc, label = "自由对话" }: { phase: number; run: number; context: string[]; history: ChatMessage[]; onMessage: (npc: NpcId, text: string, reply: string) => void; fixedNpc?: NpcId; label?: string }) {
+  const [npc, setNpc] = useState<NpcId>(fixedNpc ?? "user404");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [reply, setReply] = useState<string | null>(null);
@@ -22,5 +22,5 @@ export function ChatPanel({ phase, run, context, history, onMessage }: { phase: 
     } catch { setReply("网络断开了。固定内容仍然可以继续。"); }
     finally { setBusy(false); }
   }
-  return <section className="card"><h3>自由对话</h3><div className="actions">{npcs.map(([id, label]) => <button key={id} className={npc === id ? "" : "secondary"} onClick={() => setNpc(id)}>{label}</button>)}</div>{reply && <p className="answer">{reply}</p>}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="输入一句话……" maxLength={300} /><div className="actions"><button onClick={send} disabled={busy || !message.trim()}>{busy ? "对方正在输入……" : "发送"}</button></div></section>;
+  return <section className={`chat-panel ${fixedNpc ? "inline-chat" : "card"}`}><h3>{label}</h3>{!fixedNpc && <div className="actions">{npcs.map(([id, npcLabel]) => <button key={id} className={npc === id ? "" : "secondary"} onClick={() => setNpc(id)}>{npcLabel}</button>)}</div>}{reply && <p className="answer">{reply}</p>}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="输入一句话……" maxLength={300} /><div className="actions"><button onClick={send} disabled={busy || !message.trim()}>{busy ? "对方正在输入……" : "发送"}</button></div></section>;
 }

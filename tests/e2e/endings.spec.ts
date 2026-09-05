@@ -2,18 +2,14 @@ import { test, expect, type Page } from "@playwright/test";
 
 async function publish(page: Page, ending: "death_404" | "exit" | "delete") {
   await page.goto("/");
-  await page.getByRole("button", { name: "重置存档" }).click();
-  await page.getByRole("button", { name: "阅读评论" }).click();
-  if (ending === "death_404") await page.getByRole("button", { name: "深挖异常评论" }).click();
-  else await page.getByRole("button", { name: "停止阅读" }).click();
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "展开阅读全文" }).click();
+  await page.getByRole("button", { name: /24 条评论/ }).click();
   await page.getByRole("button", { name: "回复" }).click();
-  await page.getByRole("button", { name: "查看私信与规则" }).click();
-  if (ending === "exit") await page.getByRole("button", { name: "打开原始附件" }).click();
-  else await page.getByRole("button", { name: "查看摘要" }).click();
-  await page.getByRole("button", { name: "标记待核实" }).click();
-  await page.locator(".clue").filter({ hasText: "C2" }).getByRole("button", { name: "查看" }).click();
-  if (ending === "delete") await page.getByRole("button", { name: "强行揭示模糊证据" }).click();
-  else await page.getByRole("button", { name: "查看已知证据" }).click();
+  if (ending === "exit") await page.getByRole("button", { name: "打开附件" }).click();
+  await page.getByRole("button", { name: "关闭" }).first().click();
+  await page.locator(".clue").filter({ hasText: ending === "delete" ? "C4" : "C2" }).getByRole("button", { name: "打开记录" }).click();
   await page.getByRole("button", { name: "打开草稿" }).click();
   await page.getByRole("button", { name: "确认发布" }).click();
 }

@@ -6,7 +6,7 @@ export type RiskChoice = "safe" | "danger";
 export type NpcId = "user404" | "dormManager" | "author";
 export type FirstTopic = "screenshot" | "rules" | "exit" | "identity" | "unknown";
 
-export type ChatMessage = { role: "user" | "assistant"; text: string };
+export type ChatMessage = { role: "user" | "assistant"; text: string; npc?: NpcId | "unknown" };
 
 export type CurrentRun = {
   hasReadP01Answer: boolean;

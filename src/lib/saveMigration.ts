@@ -8,6 +8,7 @@ export function migrateState(value: unknown): GameState | null {
   if (state.currentRun.endingSettled && !state.currentRun.endingId) return null;
   if (state.currentRun.endingId === "delete" && state.currentRun.ownAnswerText) return null;
   const current = state.currentRun as GameState["currentRun"];
+  current.conversationHistory = (current.conversationHistory ?? []).map((message) => ({ ...message, npc: message.npc ?? "unknown" }));
   current.riskChoices ??= {};
   current.riskConsequences ??= {};
   current.unlockedExitIds ??= [];

@@ -9,7 +9,7 @@ describe("知境主线状态机", () => {
     const repeated = gameReducer(danger, { type: "CHOOSE_RISK", node: "comments", choice: "safe", actionId: "risk-2" });
 
     expect(danger.currentRun.riskChoices.comments).toBe("danger");
-    expect(danger.pollution).toBe(2);
+    expect(danger.pollution).toBe(1);
     expect(repeated).toEqual(danger);
   });
 
@@ -79,6 +79,15 @@ describe("知境主线状态机", () => {
     expect(repeated).toEqual(opened);
   });
 
+  it("正式网页动作不显示显式风险选项", () => {
+    let state = createInitialState();
+    state = gameReducer(state, { type: "READ_ANSWER", actionId: "read" });
+    state = gameReducer(state, { type: "OPEN_FOLDED_COMMENTS", actionId: "open" });
+    expect(state.currentRun.riskChoices.comments).toBe("danger");
+    expect(state.currentRun.foldedCommentCount).toBe(18);
+    expect(state.pollution).toBe(1);
+  });
+
   it("发布后创建本轮回答并停在 02:07", () => {
     let state = createInitialState();
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C2", actionId: "c2" });
@@ -118,8 +127,8 @@ describe("知境主线状态机", () => {
       type: "CHAT_NPC", npc: "user404", text: "你是谁？", reply: "我只记得截图。", actionId: "chat-1",
     });
     expect(state.currentRun.conversationHistory).toEqual([
-      { role: "user", text: "你是谁？" },
-      { role: "assistant", text: "我只记得截图。" },
+      { role: "user", text: "你是谁？", npc: "user404" },
+      { role: "assistant", text: "我只记得截图。", npc: "user404" },
     ]);
     expect(state.currentRun.hasPublishedOwnAnswer).toBe(false);
   });

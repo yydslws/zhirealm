@@ -1,6 +1,6 @@
 import { question } from "@/src/content/p01";
 import type { GameState } from "@/src/game/types";
 
-export function AnswerCard({ state, onRead }: { state: GameState; onRead: () => void }) {
-  return <section className={`card ${state.currentRun.hasReadP01Answer ? "answer-read" : ""}`}><div className="meta">{question.author} · {question.publishedAt} · 第5次编辑</div><div className="answer">{question.answer}</div>{state.currentRun.hasReadP01Answer && <p className="answer-reveal">评论区里有人说，这栋楼从来没有四层。</p>}<div className="meta">高赞回答 · 24 条评论</div><div className="actions"><button className="secondary" onClick={onRead}>阅读评论</button></div></section>;
+export function AnswerCard({ state, onRead, onComments, onAuthorChat }: { state: GameState; onRead: () => void; onComments: () => void; onAuthorChat?: () => void }) {
+  return <section className={`card answer-card ${state.currentRun.hasReadP01Answer ? "answer-read" : ""}`}><div className="author-row"><div className="avatar">南</div><div><strong>{question.author}</strong><div className="meta">学生 · 校园话题答主 · {question.publishedAt} · 第5次编辑</div></div><button className="link-button" onClick={onAuthorChat}>私信</button></div><div className={`answer ${state.currentRun.hasReadP01Answer ? "expanded" : "excerpt"}`}>{question.answer}</div>{state.currentRun.hasReadP01Answer && <p className="answer-reveal">评论区里有人说，这栋楼从来没有四层。</p>}{!state.currentRun.hasReadP01Answer && <button className="link-button" onClick={onRead}>展开阅读全文</button>}<div className="post-actions"><button className="plain-action">👍 赞同 1.2K</button><button className="plain-action" onClick={onComments}>💬 24 条评论</button><button className="plain-action">收藏</button><button className="plain-action">分享</button></div></section>;
 }
