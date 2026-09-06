@@ -13,6 +13,7 @@ export function migrateState(value: unknown): GameState | null {
   current.hasSeenAnomalyComment ??= legacy.hasSeenUser404Comment ?? false;
   current.hasRepliedAuthorComment ??= legacy.hasRepliedUser404 ?? false;
   current.authorFirstTopic ??= legacy.user404FirstTopic ?? null;
+  current.endingViewDismissed ??= false;
   current.conversationHistory = (current.conversationHistory ?? []).map((message) => ({ ...message, npc: message.npc ?? "unknown" }));
   current.riskChoices ??= {};
   current.riskConsequences ??= {};
@@ -37,6 +38,7 @@ export function migrateState(value: unknown): GameState | null {
   current.comparedEditVersionIds ??= [];
   current.profileViews ??= [];
   current.imageInspections ??= [];
+  current.receivedAttachmentIds ??= [];
   current.lastPlayerInput ??= null;
   current.commentsOpened ??= current.hasSeenAnomalyComment;
   current.foldedCountShifted ??= current.hasSeenAnomalyComment;

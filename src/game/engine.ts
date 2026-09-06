@@ -29,8 +29,7 @@ export function applyWorldEvent(state: GameState, event: WorldEvent): GameState 
   }
   if (event.type === "CHANGE_NPC_ATTITUDE") return { ...state, currentRun: { ...state.currentRun, worldEvents: events, npcAttitude: { ...state.currentRun.npcAttitude, [event.npc]: (state.currentRun.npcAttitude[event.npc] ?? 0) + event.delta } } };
   if (event.type === "SHOW_ATTACHMENT") {
-    const clueId = event.attachmentId === "photo-404" ? "C3" : event.attachmentId === "register-404" ? "C2" : null;
-    return { ...state, phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, worldEvents: events, imageInspections: state.currentRun.imageInspections.includes(event.attachmentId) ? state.currentRun.imageInspections : [...state.currentRun.imageInspections, event.attachmentId], seenClueIds: clueId && !state.currentRun.seenClueIds.includes(clueId) ? [...state.currentRun.seenClueIds, clueId] : state.currentRun.seenClueIds, phase05Available: true } };
+    return { ...state, phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, worldEvents: events, receivedAttachmentIds: state.currentRun.receivedAttachmentIds.includes(event.attachmentId) ? state.currentRun.receivedAttachmentIds : [...state.currentRun.receivedAttachmentIds, event.attachmentId], phase05Available: true } };
   }
   return { ...state, currentRun: { ...state.currentRun, worldEvents: events } };
 }

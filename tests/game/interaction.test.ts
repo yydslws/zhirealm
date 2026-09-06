@@ -75,6 +75,30 @@ describe("三层互动", () => {
     expect(state.currentRun.conversationSeenNpcIds).toContain("dormManager");
   });
 
+  it("宿管说进去看看不会启动答主直播", () => {
+    const state = gameReducer({ ...createInitialState(), phase: 4 }, { type: "CHAT_NPC", npc: "dormManager", text: "进去看看", reply: "我不会过去。", actionId: "dorm-no-push" });
+    expect(state.currentRun.liveFeedStarted).toBe(false);
+    expect(state.currentRun.worldEvents).toEqual([]);
+  });
+
+  it("收到照片附件不立即发现 C3，检查区域后才发现", () => {
+    let state = gameReducer(createInitialState(), { type: "CHAT_NPC", npc: "author", text: "拍张照片", reply: "照片发来了。", actionId: "photo-received" });
+    expect(state.currentRun.receivedAttachmentIds).toContain("photo-404");
+    expect(state.currentRun.seenClueIds).not.toContain("C3");
+    state = gameReducer(state, { type: "OPEN_IMAGE", imageId: "photo-404", actionId: "photo-open" });
+    expect(state.currentRun.seenClueIds).not.toContain("C3");
+    state = gameReducer(state, { type: "OPEN_IMAGE_REGION", imageId: "photo-404", regionId: "door", actionId: "photo-inspect" });
+    expect(state.currentRun.seenClueIds).toContain("C3");
+  });
+
+  it("返回问题后隐藏已结算结局面板", () => {
+    let state = { ...createInitialState(), currentRun: { ...createInitialState().currentRun, hasPublishedOwnAnswer: true, unlockedExitIds: ["exit"] } };
+    state = gameReducer(state, { type: "TRIGGER_EXIT", endingId: "exit", actionId: "ending" });
+    state = gameReducer(state, { type: "RETURN_TO_QUESTION", actionId: "dismiss-ending" });
+    expect(state.scene).toBe("question");
+    expect(state.currentRun.endingViewDismissed).toBe(true);
+  });
+
   it("不匹配当前意图的事件会被降级为 NONE", () => {
     const state = gameReducer(createInitialState(), {
       type: "CHAT_NPC", npc: "author", text: "别进去", reply: "好。", intent: "WARN_AUTHOR",

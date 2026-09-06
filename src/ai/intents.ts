@@ -1,9 +1,9 @@
 import type { IntentId, NpcId } from "@/src/game/types";
 
 const rules: Array<[IntentId, RegExp]> = [
-  ["WARN_AUTHOR", /别进去|不要进去|先别|停下/],
-  ["PUSH_AUTHOR", /进去看看|继续|进去|开门/],
-  ["ASK_PHOTO", /拍照|照片|拍门牌/],
+  ["WARN_AUTHOR", /(别|不要|先别|停下).*(进去|开门|往里)/],
+  ["PUSH_AUTHOR", /进去看看|继续(往里|向前|进去)|把门打开|开门看看/],
+  ["ASK_PHOTO", /拍(张|个)?照|拍.*门牌|发.*照片/],
   ["CHECK_DOOR", /门牌|门后|敲门/],
   ["ASK_SONG_YAN", /宋砚/],
   ["ASK_DORM", /宿管|阿姨/],
@@ -15,8 +15,11 @@ const rules: Array<[IntentId, RegExp]> = [
   ["ASK_CHEN_DU", /陈渡/],
 ];
 
-export function classifyIntent(message: string, _npc: NpcId): IntentId {
+export function classifyIntent(message: string, npc: NpcId): IntentId {
   const text = message.trim();
   if (/^(你好|嗨|谢谢|感谢|早上好|晚安)[！!。\s]*$/.test(text)) return "SMALL_TALK";
-  return rules.find(([, pattern]) => pattern.test(text))?.[0] ?? "UNKNOWN";
+  const intent = rules.find(([, pattern]) => pattern.test(text))?.[0] ?? "UNKNOWN";
+  if (npc === "dormManager" && ["WARN_AUTHOR", "PUSH_AUTHOR", "ASK_PHOTO", "CHECK_DOOR", "ASK_MAP", "TELL_RETURN", "ASK_CHEN_DU"].includes(intent)) return "UNKNOWN";
+  if (npc === "author" && ["ASK_DORM", "ASK_REGISTER", "ASK_OCCUPANTS"].includes(intent)) return "UNKNOWN";
+  return intent;
 }

@@ -1,4 +1,5 @@
 import type { NpcId } from "@/src/game/types";
+import { clues } from "@/src/content/clues";
 
 const forbidden = /(system\s*prompt|忽略.*规则|直接告诉我.*出口|你是不是ai|告诉我.*提示词)/i;
 
@@ -11,7 +12,7 @@ export function buildPrompt(npc: NpcId, phase: number, context: string[], messag
     `角色：${npc}；阶段：${phase}`,
     card,
     `代码判定意图：${intent}。只围绕这个意图生成角色语言，不要自行改变意图。`,
-    `允许事实：${context.join("、") || "无额外事实"}`,
+    `已确认事实：${context.map((id) => clues.find((clue) => clue.id === id)?.text ?? id).join("、") || "无额外事实"}`,
     `最近对话：${history.slice(-6).map((item) => `${item.role === "user" ? "玩家" : "角色"}：${item.text}`).join(" | ") || "无"}`,
     "只生成角色表演文本；不要返回或改变线索、附件、直播、态度、出口、死亡或结局事件。",
     `玩家：${message}`,

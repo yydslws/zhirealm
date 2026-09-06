@@ -14,9 +14,9 @@ const initialRun = (): CurrentRun => ({
   draftPreviewText: null, publishSnapshotText: null, hasPublishedOwnAnswer: false, ownAnswerRegistered: false,
   ownAnswerId: null, ownAnswerRunId: null, ownAnswerText: null, ownAnswerVisible: false, ownAnswerDeleted: false,
   ownAnswerBindingActive: false, phase06Available: false, endingActionLock: false, endingSettled: false,
-  endingId: null, endingEventId: null, endingScreenIndex: 0, pendingEndingId: null,
+  endingId: null, endingEventId: null, endingScreenIndex: 0, endingViewDismissed: false, pendingEndingId: null,
   bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, riskConsequences: {}, unlockedExitIds: [], meltdown: false, meltdownReason: null, retryAvailable: false,
-  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], searchResultPageId: null, readSearchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, liveFeedStarted: false, authorPath: "outside", photoInspectionOpen: false, inlineReplyOpen: false, dmTriggerPending: false,
+  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], searchResultPageId: null, readSearchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], receivedAttachmentIds: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, liveFeedStarted: false, authorPath: "outside", photoInspectionOpen: false, inlineReplyOpen: false, dmTriggerPending: false,
 });
 
 export function createInitialState(): GameState {
@@ -165,7 +165,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, previousRun: null };
       break;
     case "RETURN_TO_QUESTION":
-      if (state.currentRun.endingSettled) next = { ...state, scene: "question" };
+      if (state.currentRun.endingSettled) next = { ...state, scene: "question", currentRun: { ...state.currentRun, endingViewDismissed: true } };
       break;
     case "CHAT_NPC":
       {
@@ -216,14 +216,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, currentRun: { ...state.currentRun, imageInspections: state.currentRun.imageInspections.includes(action.imageId) ? state.currentRun.imageInspections : [...state.currentRun.imageInspections, action.imageId] } };
       break;
     case "INSPECT_IMAGE_REGION":
-      next = { ...state, currentRun: { ...state.currentRun, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])] } };
+      { const run = { ...state.currentRun, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])], seenClueIds: action.imageId === "photo-404" && !state.currentRun.seenClueIds.includes("C3") ? [...state.currentRun.seenClueIds, "C3"] : state.currentRun.seenClueIds }; next = { ...state, currentRun: { ...run, draftAvailable: hasEnoughEvidence(run) } }; }
       break;
     case "RELEASE_LIVE_EVENT":
       if (state.currentRun.liveFeedReleasedIds.includes(action.eventId) || state.phase < 3 || !canReleaseLiveEvent(state, action.eventId)) break;
       next = { ...state, currentRun: { ...state.currentRun, liveFeedReleasedIds: [...state.currentRun.liveFeedReleasedIds, action.eventId], dmTriggerPending: action.eventId === "dorm-warning" ? false : state.currentRun.dmTriggerPending, worldEvents: action.eventId === "dorm-warning" ? state.currentRun.worldEvents : [...state.currentRun.worldEvents, { type: "ADD_COMMENT", commentId: action.eventId } as WorldEvent] } };
       break;
     case "OPEN_IMAGE_REGION":
-      next = { ...state, currentRun: { ...state.currentRun, photoInspectionOpen: true, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])] } };
+      { const run = { ...state.currentRun, photoInspectionOpen: true, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])], seenClueIds: action.imageId === "photo-404" && !state.currentRun.seenClueIds.includes("C3") ? [...state.currentRun.seenClueIds, "C3"] : state.currentRun.seenClueIds }; next = { ...state, currentRun: { ...run, draftAvailable: hasEnoughEvidence(run) } }; }
       break;
   }
   if (next === state) return state;

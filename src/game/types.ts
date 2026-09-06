@@ -53,6 +53,7 @@ export type CurrentRun = {
   endingId: EndingId | null;
   endingEventId: string | null;
   endingScreenIndex: number;
+  endingViewDismissed: boolean;
   pendingEndingId: EndingId | null;
   bAutoCommentAdded: boolean;
   bAutoCommentId: string | null;
@@ -76,6 +77,7 @@ export type CurrentRun = {
   comparedEditVersionIds: string[];
   profileViews: string[];
   imageInspections: string[];
+  receivedAttachmentIds: string[];
   lastPlayerInput: string | null;
   commentsOpened: boolean;
   foldedCountShifted: boolean;
