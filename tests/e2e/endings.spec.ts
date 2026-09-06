@@ -14,7 +14,7 @@ async function publish(page: Page, ending: "death_404" | "exit" | "delete") {
   await page.getByRole("button", { name: "确认发布" }).click();
 }
 
-for (const [button, title] of [["关闭此页", "该回答不存在"], ["回到首页", "回到首页"], ["删除回答", "删除成功"]] as const) {
+for (const [button, title] of [["关闭此页", "陈渡出来了"], ["回到首页", "直播暂停"], ["删除回答", "删除自己的记录"]] as const) {
   test(`${button} 可提交对应结局`, async ({ page }) => {
     await publish(page, button === "关闭此页" ? "death_404" : button === "回到首页" ? "exit" : "delete");
     await page.getByRole("button", { name: button }).click();

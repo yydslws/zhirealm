@@ -1,8 +1,8 @@
 export const rules = [
-  { id: "R1", text: "两点以后，不要打开折叠评论。", truth: true },
-  { id: "R2", text: "不要回复用户不存在。", truth: false },
-  { id: "R3", text: "宿管不会主动私信。", truth: false },
-  { id: "R4", text: "看见404以后，不要敲门。", truth: "conditional" as const },
-  { id: "R5", text: "编辑超过四次的回答不可信。", truth: true },
-  { id: "R6", text: "听宿管的，关闭此页就能离开。", truth: false },
+  { id: "R1", text: "403的下一间是405，但这不代表中间没有房间。", truth: true },
+  { id: "R2", text: "水房后面有一条沿楼背面折回去的窄通道。", truth: true },
+  { id: "R3", text: "404的门不朝主走廊开。", truth: "conditional" as const },
+  { id: "R4", text: "住宿登记表里最后一栏写着陈渡。", truth: true },
+  { id: "R5", text: "编辑记录能找回被改写的句子。", truth: true },
+  { id: "R6", text: "宋砚的名字仍在四个人的登记表里。", truth: true },
 ];
