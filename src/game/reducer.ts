@@ -1,7 +1,7 @@
 import { buildDraft } from "@/src/game/derive";
 import { canChooseEnding, canPublish } from "@/src/game/guards";
-import { applyWorldEvent, validateIntentEvent } from "@/src/game/engine";
-import { fallbackIntentEvent } from "@/src/ai/events";
+import { applyWorldEvent } from "@/src/game/engine";
+import { canonicalEventForIntent } from "@/src/ai/events";
 import { classifyIntent } from "@/src/ai/intents";
 import { canReleaseLiveEvent } from "@/src/game/liveFeed";
 import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskChoice, RiskNodeId, WorldEvent } from "@/src/game/types";
@@ -70,7 +70,7 @@ function settleMeltdown(state: GameState): GameState {
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (state.currentRun.actionIds.includes(action.actionId)) return state;
-  if (state.currentRun.endingSettled && !["ADVANCE_ENDING_SCREEN", "REENTER_NEXT_RUN", "RETRY_AFTER_MELTDOWN", "CANCEL_ACTION"].includes(action.type)) return state;
+  if (state.currentRun.endingSettled && !["ADVANCE_ENDING_SCREEN", "REENTER_NEXT_RUN", "RETRY_AFTER_MELTDOWN", "RETURN_TO_QUESTION", "CANCEL_ACTION"].includes(action.type)) return state;
   let next = state;
   switch (action.type) {
     case "READ_ANSWER":
@@ -96,11 +96,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       break;
     }
     case "REPLY_AUTHOR_COMMENT":
-      next = { ...state, scene: "comments", phase: Math.max(state.phase, 3), currentRun: { ...state.currentRun, hasRepliedAuthorComment: true, inlineReplyOpen: true, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("author") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "author"] } };
+      next = { ...state, scene: "comments", phase: Math.max(state.phase, 3), currentRun: { ...state.currentRun, inlineReplyOpen: true } };
       break;
     case "OPEN_DORM_MESSAGE":
       if (!state.currentRun.liveFeedReleasedIds.includes("dorm-warning")) break;
       next = { ...state, scene: "messages", phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("dormManager") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "dormManager"] } };
+      break;
+    case "MARK_DM_READ":
+      if (!state.currentRun.liveFeedReleasedIds.includes("dorm-warning")) break;
+      next = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("dormManager") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "dormManager"] } };
       break;
     case "VIEW_RULE":
       next = { ...state, scene: "investigation", phase: Math.max(state.phase, 3), currentRun: { ...state.currentRun, seenRuleIds: state.currentRun.seenRuleIds.includes(action.ruleId) ? state.currentRun.seenRuleIds : [...state.currentRun.seenRuleIds, action.ruleId] } };
@@ -127,7 +131,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (canChooseEnding(state) && (!state.currentRun.unlockedExitIds.length || state.currentRun.unlockedExitIds.includes(action.endingId as ExitId))) next = { ...state, currentRun: { ...state.currentRun, pendingEndingId: action.endingId } };
       break;
     case "TRIGGER_EXIT":
-      if (canChooseEnding(state) && state.currentRun.unlockedExitIds.includes(action.endingId)) next = { ...state, currentRun: { ...state.currentRun, pendingEndingId: action.endingId } };
+      if (canChooseEnding(state) && state.currentRun.unlockedExitIds.includes(action.endingId)) {
+        if (action.endingId === "exit") {
+          const r = { ...state.currentRun, endingSettled: true, endingId: "exit" as const, endingEventId: `exit-${state.run}`, endingScreenIndex: 1, bAutoCommentAdded: true, bAutoCommentId: `comment-${state.run}` };
+          next = { ...state, scene: "ending", currentRun: r, previousRun: summarizeRun(state, r) };
+        } else next = { ...state, currentRun: { ...state.currentRun, pendingEndingId: action.endingId } };
+      }
       break;
     case "CANCEL_ACTION":
       next = { ...state, currentRun: { ...state.currentRun, pendingEndingId: null } };
@@ -147,20 +156,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.currentRun.endingSettled) next = { ...state, currentRun: { ...state.currentRun, endingScreenIndex: Math.min(3, state.currentRun.endingScreenIndex + 1) } };
       break;
     case "REENTER_NEXT_RUN":
-      if (state.currentRun.endingSettled && !state.currentRun.meltdown && state.currentRun.endingScreenIndex >= 3) next = resetForNextRun(state);
+      if (state.currentRun.endingSettled && !state.currentRun.meltdown) next = resetForNextRun(state);
       break;
     case "RETRY_AFTER_MELTDOWN":
-      if (state.currentRun.meltdown && state.currentRun.retryAvailable && state.currentRun.endingScreenIndex >= 3) next = { ...createInitialState(), run: state.run, previousRun: state.previousRun ?? summarizeRun(state), saveRevision: state.saveRevision + 1 };
+      if (state.currentRun.meltdown && state.currentRun.retryAvailable) next = { ...createInitialState(), run: state.run, previousRun: state.previousRun ?? summarizeRun(state), saveRevision: state.saveRevision + 1 };
       break;
     case "CLEAR_PREVIOUS_RUN":
       next = { ...state, previousRun: null };
       break;
+    case "RETURN_TO_QUESTION":
+      if (state.currentRun.endingSettled) next = { ...state, scene: "question" };
+      break;
     case "CHAT_NPC":
       {
-        const intent = action.intent ?? classifyIntent(action.text, action.npc);
-        const fallback = fallbackIntentEvent(intent, action.npc);
-        const event = validateIntentEvent(state, action.npc, intent, action.event ?? fallback.event);
-        const assistant = { role: "assistant" as const, text: action.reply || fallback.text, npc: action.npc, ...(event.type === "SHOW_ATTACHMENT" ? { attachmentId: event.attachmentId } : {}) };
+        const intent = classifyIntent(action.text, action.npc);
+        const event = canonicalEventForIntent(intent, action.npc);
+        const assistant = { role: "assistant" as const, text: action.reply, npc: action.npc, ...(event.type === "SHOW_ATTACHMENT" ? { attachmentId: event.attachmentId } : {}) };
         const chatted = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user" as const, text: action.text, npc: action.npc }, assistant], intentHistory: [...state.currentRun.intentHistory, { npc: action.npc, intent, text: action.text }].slice(-20), lastPlayerInput: action.text } };
         next = applyWorldEvent(chatted, event);
         if (intent === "WARN_AUTHOR") next = { ...next, currentRun: { ...next.currentRun, liveFeedPaused: true, authorPath: "outside" } };
@@ -169,7 +180,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (intent === "TELL_RETURN" && !next.currentRun.unlockedExitIds.includes("exit")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "exit"] } };
         if (intent === "DELETE_HINT" && !next.currentRun.unlockedExitIds.includes("delete")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "delete"] } };
         if (intent === "ASK_CHEN_DU" && !next.currentRun.seenClueIds.includes("C5")) next = { ...next, currentRun: { ...next.currentRun, seenClueIds: [...next.currentRun.seenClueIds, "C5"], draftAvailable: true } };
-        if (action.npc === "author" && /有人会联系你|会联系你|联系你/.test(action.reply || fallback.text)) next = { ...next, currentRun: { ...next.currentRun, dmTriggerPending: true } };
+        if (action.npc === "author" && action.text.trim()) next = { ...next, currentRun: { ...next.currentRun, hasRepliedAuthorComment: true, dmTriggerPending: true, conversationSeenNpcIds: next.currentRun.conversationSeenNpcIds.includes("author") ? next.currentRun.conversationSeenNpcIds : [...next.currentRun.conversationSeenNpcIds, "author"] } };
         next = { ...next, currentRun: { ...next.currentRun, draftAvailable: hasEnoughEvidence(next.currentRun) } };
       }
       break;

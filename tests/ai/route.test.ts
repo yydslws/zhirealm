@@ -3,7 +3,8 @@ import { fallbackForNpc } from "@/src/ai/fallback";
 import { aiResponseSchema } from "@/src/ai/schema";
 import { askDeepSeek, withOneRetry } from "@/src/ai/client";
 import { allowRequest } from "@/src/ai/rateLimit";
-import { fallbackIntentEvent } from "@/src/ai/events";
+import { canonicalEventForIntent, fallbackIntentEvent } from "@/src/ai/events";
+import { buildPrompt } from "@/src/ai/prompt";
 
 describe("AI 边界", () => {
   it("非法输出不会被当成游戏事件", () => {
@@ -48,5 +49,15 @@ describe("AI 边界", () => {
     const result = fallbackIntentEvent("ASK_SONG_YAN", "author");
     expect(result.intent).toBe("ASK_SONG_YAN");
     expect(result.event).toEqual({ type: "REVEAL_CLUE", clueId: "C2" });
+  });
+
+  it("canonical event 由代码固定为附件而非任意线索", () => {
+    expect(canonicalEventForIntent("ASK_PHOTO", "author")).toEqual({ type: "SHOW_ATTACHMENT", attachmentId: "photo-404" });
+    expect(canonicalEventForIntent("ASK_REGISTER", "dormManager")).toEqual({ type: "SHOW_ATTACHMENT", attachmentId: "register-404" });
+  });
+
+  it("prompt 明确当前代码判定 intent", () => {
+    const prompt = buildPrompt("dormManager", 4, [], "你是谁？", [], "ASK_DORM");
+    expect(prompt).toContain("代码判定意图：ASK_DORM");
   });
 });

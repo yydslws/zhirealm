@@ -144,7 +144,7 @@ describe("知境主线状态机", () => {
     expect(state.phase).toBe(4);
   });
 
-  it("只有结局第三屏重新进入才增加周目并保留摘要", () => {
+  it("结局单页即可重新进入并保留摘要", () => {
     let state = createInitialState();
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C2", actionId: "c2" });
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C3", actionId: "c3" });
@@ -154,9 +154,6 @@ describe("知境主线状态机", () => {
     state = gameReducer(state, { type: "CHOOSE_ENDING", endingId: "exit", actionId: "e1" });
     state = gameReducer(state, { type: "CONFIRM_ENDING", actionId: "e2" });
     expect(state.currentRun.bAutoCommentAdded).toBe(true);
-    expect(gameReducer(state, { type: "REENTER_NEXT_RUN", actionId: "early" }).run).toBe(1);
-    state = gameReducer(state, { type: "ADVANCE_ENDING_SCREEN", actionId: "s2" });
-    state = gameReducer(state, { type: "ADVANCE_ENDING_SCREEN", actionId: "s3" });
     state = gameReducer(state, { type: "REENTER_NEXT_RUN", actionId: "reenter" });
     expect(state.run).toBe(2);
     expect(state.previousRun?.endingId).toBe("exit");

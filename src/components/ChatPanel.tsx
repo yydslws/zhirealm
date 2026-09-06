@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ChatMessage, NpcId, IntentId, WorldEvent } from "@/src/game/types";
+import { classifyIntent } from "@/src/ai/intents";
+import { fallbackIntentEvent } from "@/src/ai/events";
 
 const npcs: Array<[NpcId, string]> = [["author", "南楼旧床板"], ["dormManager", "宿管阿姨"]];
 
@@ -15,11 +17,18 @@ export function ChatPanel({ phase, run, context, history, onMessage, fixedNpc, l
     if (!text || busy) return;
     setBusy(true); setReply(null);
     try {
-      const response = await fetch("/api/game", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ npc, phase, run, message: text, context, history }) });
+      const npcHistory = history.filter((item) => item.npc === npc);
+      const response = await fetch("/api/game", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ npc, phase, run, message: text, context, history: npcHistory }) });
       const data = await response.json();
       const nextReply = typeof data.text === "string" ? data.text : "对话暂时不可用。";
       setReply(nextReply); onMessage(npc, text, nextReply, data.intent as IntentId, data.event as WorldEvent); setMessage("");
-    } catch { setReply("网络断开了。固定内容仍然可以继续。"); }
+    } catch {
+      const intent = classifyIntent(text, npc);
+      const fallback = fallbackIntentEvent(intent, npc);
+      setReply(fallback.text);
+      onMessage(npc, text, fallback.text, intent, fallback.event);
+      setMessage("");
+    }
     finally { setBusy(false); }
   }
   const thread = history.filter((item) => item.npc === npc);

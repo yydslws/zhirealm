@@ -26,9 +26,16 @@ describe("三层互动", () => {
 
   it("404 回复不打开宿管，收到联系提示后才解锁私信通知", () => {
     let state = gameReducer({ ...createInitialState(), phase: 2 }, { type: "REPLY_AUTHOR_COMMENT", actionId: "reply" });
-    expect(state.currentRun.conversationSeenNpcIds).toContain("author");
+    expect(state.currentRun.conversationSeenNpcIds).not.toContain("author");
     expect(state.currentRun.conversationSeenNpcIds).not.toContain("dormManager");
     state = gameReducer(state, { type: "CHAT_NPC", npc: "author", text: "你是谁？", reply: "之后会有人联系你。", actionId: "chat" });
+    expect(state.currentRun.conversationSeenNpcIds).toContain("author");
+    expect(state.currentRun.dmTriggerPending).toBe(true);
+  });
+
+  it("答主回复内容不影响宿管通知触发", () => {
+    let state = gameReducer({ ...createInitialState(), phase: 2 }, { type: "REPLY_AUTHOR_COMMENT", actionId: "reply-deterministic" });
+    state = gameReducer(state, { type: "CHAT_NPC", npc: "author", text: "先等等", reply: "我还在门口。", actionId: "chat-deterministic" });
     expect(state.currentRun.dmTriggerPending).toBe(true);
   });
 
@@ -50,6 +57,22 @@ describe("三层互动", () => {
       intent: "ASK_SONG_YAN", event: { type: "REVEAL_CLUE", clueId: "C2" }, actionId: "chat-songyan",
     });
     expect(state.currentRun.seenClueIds).toContain("C2");
+  });
+
+  it("意图由代码决定，AI 事件不能把拍照改成直接揭示线索", () => {
+    const state = gameReducer(createInitialState(), {
+      type: "CHAT_NPC", npc: "author", text: "先拍门牌给我看", reply: "照片发来了。",
+      intent: "ASK_MAP", event: { type: "REVEAL_CLUE", clueId: "C1" }, actionId: "canonical-photo",
+    });
+    expect(state.currentRun.conversationHistory.at(-1)).toMatchObject({ attachmentId: "photo-404" });
+    expect(state.currentRun.seenClueIds).not.toContain("C1");
+  });
+
+  it("宿管私信标记已读后移除通知", () => {
+    let state = { ...createInitialState(), phase: 3, currentRun: { ...createInitialState().currentRun, dmTriggerPending: true } };
+    state = gameReducer(state, { type: "RELEASE_LIVE_EVENT", eventId: "dorm-warning", actionId: "dm-release" });
+    state = gameReducer(state, { type: "MARK_DM_READ", actionId: "dm-read" });
+    expect(state.currentRun.conversationSeenNpcIds).toContain("dormManager");
   });
 
   it("不匹配当前意图的事件会被降级为 NONE", () => {

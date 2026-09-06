@@ -28,16 +28,15 @@ async function publish(page: Page, ending: "death_404" | "exit" | "delete") {
 }
 
 test("退出阅读入口可提交陈渡结局", async ({ page }) => {
-    await publish(page, "death_404");
-    await page.getByRole("button", { name: "退出阅读" }).click();
-    await page.getByRole("button", { name: "确认", exact: true }).click();
+  await publish(page, "death_404");
+  await page.getByRole("button", { name: "退出阅读" }).click();
+    await page.getByRole("button", { name: "离开", exact: true }).click();
     await expect(page.getByText("陈渡出来了", { exact: true })).toBeVisible();
 });
 
 test("知境 Logo 可提交直播暂停结局", async ({ page }) => {
   await publish(page, "exit");
   await page.getByRole("button", { name: "知境" }).click();
-  await page.getByRole("button", { name: "确认", exact: true }).click();
   await expect(page.getByText("直播暂停", { exact: true })).toBeVisible();
 });
 
@@ -45,6 +44,6 @@ test("回答菜单可提交删除结局", async ({ page }) => {
   await publish(page, "delete");
   await page.getByRole("button", { name: "回答菜单" }).click();
   await page.getByRole("button", { name: "删除回答" }).click();
-  await page.getByRole("button", { name: "确认", exact: true }).click();
+  await page.getByRole("button", { name: "删除", exact: true }).click();
   await expect(page.getByText("删除自己的记录", { exact: true })).toBeVisible();
 });

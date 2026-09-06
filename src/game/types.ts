@@ -122,6 +122,7 @@ export type GameAction =
   | { type: "OPEN_FOLDED_COMMENTS"; actionId: string }
   | { type: "REPLY_AUTHOR_COMMENT"; actionId: string }
   | { type: "OPEN_DORM_MESSAGE"; actionId: string }
+  | { type: "MARK_DM_READ"; actionId: string }
   | { type: "VIEW_RULE"; ruleId: string; actionId: string }
   | { type: "VIEW_CLUE"; clueId: string; actionId: string }
   | { type: "OPEN_DRAFT"; actionId: string }
@@ -135,6 +136,7 @@ export type GameAction =
   | { type: "CHOOSE_RISK"; node: RiskNodeId; choice: RiskChoice; actionId: string }
   | { type: "TRIGGER_EXIT"; endingId: ExitId; actionId: string }
   | { type: "RETRY_AFTER_MELTDOWN"; actionId: string }
+  | { type: "RETURN_TO_QUESTION"; actionId: string }
   | { type: "CHAT_NPC"; npc: NpcId; text: string; reply: string; intent?: IntentId; event?: WorldEvent; actionId: string }
   | { type: "SEARCH"; query: string; actionId: string }
   | { type: "OPEN_SEARCH_RESULT"; resultId: string; actionId: string }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { askDeepSeek } from "@/src/ai/client";
 import { fallbackForNpc } from "@/src/ai/fallback";
 import { classifyIntent } from "@/src/ai/intents";
-import { fallbackIntentEvent } from "@/src/ai/events";
+import { canonicalEventForIntent, fallbackIntentEvent } from "@/src/ai/events";
 import { buildPrompt, isForbiddenMessage } from "@/src/ai/prompt";
 import { aiRequestSchema } from "@/src/ai/schema";
 import { allowRequest } from "@/src/ai/rateLimit";
@@ -19,9 +19,10 @@ export async function POST(request: Request) {
   if (!allowRequest(session, run)) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   const intent = classifyIntent(message, npc);
   if (isForbiddenMessage(message)) return NextResponse.json({ ...fallbackIntentEvent(intent, npc), text: fallbackForNpc(npc), tone: "guarded" });
-  const prompt = buildPrompt(npc, phase, context, message, history);
+  const prompt = buildPrompt(npc, phase, context, message, history, intent);
   // One bounded model attempt keeps a slow/unstable upstream from making the
   // page look like it is reconnecting; deterministic intent fallbacks remain available.
   const result = await askDeepSeek(prompt);
-  return NextResponse.json(result ?? fallbackIntentEvent(intent, npc));
+  const fallback = fallbackIntentEvent(intent, npc);
+  return NextResponse.json({ ...(result ?? fallback), intent, event: canonicalEventForIntent(intent, npc) });
 }
