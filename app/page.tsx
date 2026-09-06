@@ -26,7 +26,7 @@ import { ImageInspectSheet } from "@/src/components/ImageInspectSheet";
 import { SearchResultPage } from "@/src/components/SearchResultPage";
 import { useGameStore } from "@/src/store/gameStore";
 import { isDemoMode } from "@/src/lib/demoMode";
-import type { IntentId, WorldEvent } from "@/src/game/types";
+import type { IntentId, NpcId, WorldEvent } from "@/src/game/types";
 import { liveFeedBranches } from "@/src/game/liveFeed";
 
 let actionCounter = 0;
@@ -44,13 +44,18 @@ export default function Home() {
   const [imageId, setImageId] = useState<string | null>(null);
   useEffect(() => { state.hydrate(); setDemo(isDemoMode()); }, []);
   useEffect(() => {
-    if (state.phase < 3 || state.currentRun.endingSettled || state.currentRun.liveFeedPaused) return;
+    if (!state.currentRun.liveFeedStarted || state.currentRun.endingSettled || state.currentRun.liveFeedPaused) return;
     const ids = liveFeedBranches[state.currentRun.authorPath];
     const next = ids.find((item) => !state.currentRun.liveFeedReleasedIds.includes(item));
     if (!next) return;
     const timer = window.setTimeout(() => action("RELEASE_LIVE_EVENT", { eventId: next }), 2600);
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.currentRun.liveFeedReleasedIds, state.currentRun.endingSettled, state.currentRun.liveFeedPaused, state.currentRun.authorPath]);
+  }, [state.currentRun.liveFeedStarted, state.currentRun.liveFeedReleasedIds, state.currentRun.endingSettled, state.currentRun.liveFeedPaused, state.currentRun.authorPath]);
+  useEffect(() => {
+    if (!state.currentRun.dmTriggerPending || state.currentRun.liveFeedReleasedIds.includes("dorm-warning")) return;
+    const timer = window.setTimeout(() => action("RELEASE_LIVE_EVENT", { eventId: "dorm-warning" }), 2000);
+    return () => window.clearTimeout(timer);
+  }, [state.currentRun.dmTriggerPending, state.currentRun.liveFeedReleasedIds]);
   useEffect(() => {
     if (!state.currentRun.commentsOpened || state.currentRun.foldedCountShifted) return;
     const timer = window.setTimeout(() => action("SHIFT_FOLDED_COUNT"), 1800);
@@ -58,24 +63,25 @@ export default function Home() {
   }, [state.currentRun.commentsOpened, state.currentRun.foldedCountShifted]);
   const dispatch = state.dispatch;
   const action = (type: Parameters<typeof dispatch>[0]["type"], extra: Record<string, string> = {}) => dispatch({ type, actionId: id(), ...extra } as never);
-  const onChat = (npc: "user404" | "dormManager" | "author", text: string, reply: string, intent?: IntentId, event?: WorldEvent) => dispatch({ type: "CHAT_NPC", npc, text, reply, intent, event, actionId: id() });
-  const runToPublish = (unlockDelete = false) => { action("READ_ANSWER"); action("OPEN_COMMENTS"); action("SHIFT_FOLDED_COUNT"); action("OPEN_FOLDED_COMMENTS"); action("REPLY_USER_404"); action("OPEN_DORM_MESSAGE"); action("VIEW_CLUE", { clueId: "C2" }); if (unlockDelete) action("CHOOSE_RISK", { node: "evidence", choice: "danger" }); action("OPEN_DRAFT"); action("PUBLISH_ANSWER"); };
+  const onChat = (npc: NpcId, text: string, reply: string, intent?: IntentId, event?: WorldEvent) => dispatch({ type: "CHAT_NPC", npc, text, reply, intent, event, actionId: id() });
+  const runToPublish = (unlockDelete = false) => { action("READ_ANSWER"); action("OPEN_COMMENTS"); action("SHIFT_FOLDED_COUNT"); action("OPEN_FOLDED_COMMENTS"); action("REPLY_AUTHOR_COMMENT"); action("OPEN_DORM_MESSAGE"); action("VIEW_CLUE", { clueId: "C2" }); action("VIEW_CLUE", { clueId: "C3" }); if (unlockDelete) action("CHOOSE_RISK", { node: "evidence", choice: "danger" }); action("OPEN_DRAFT"); action("PUBLISH_ANSWER"); };
   const forceDelete = () => { if (!state.currentRun.hasPublishedOwnAnswer) runToPublish(true); action("CHOOSE_ENDING", { endingId: "delete" }); action("CONFIRM_ENDING"); };
   const openMessages = () => { setMessagesOpen(true); };
+  const handleHome = () => { if (state.currentRun.searchResultPageId) { action("CLOSE_SEARCH_RESULT"); setSearchOpen(false); return; } if (state.currentRun.hasPublishedOwnAnswer && state.currentRun.unlockedExitIds.includes("exit")) { action("TRIGGER_EXIT", { endingId: "exit" }); return; } window.scrollTo({ top: 0, behavior: "smooth" }); };
   // Static community content renders immediately; hydration only replaces saved state.
   const memory = secondRunText(state.previousRun);
   const endingPanel = <EndingPanel state={state} choose={(endingId) => action("CHOOSE_ENDING", { endingId })} triggerExit={(endingId) => action("TRIGGER_EXIT", { endingId })} confirm={() => action("CONFIRM_ENDING")} cancel={() => action("CANCEL_ACTION")} advance={() => action("ADVANCE_ENDING_SCREEN")} reenter={() => action("REENTER_NEXT_RUN")} retry={() => action("RETRY_AFTER_MELTDOWN")} />;
-  if (state.currentRun.meltdown) return <><CommunityHeader onMessages={openMessages} /><main className="meltdown-stage">{endingPanel}{demo && <button className="meltdown-reset" onClick={state.reset}>重置存档</button>}</main></>;
+  if (state.currentRun.meltdown) return <><CommunityHeader onMessages={openMessages} time={state.gameTime} /><main className="meltdown-stage">{endingPanel}{demo && <button className="meltdown-reset" onClick={state.reset}>重置存档</button>}</main></>;
   const savedCount = state.currentRun.seenRuleIds.length + state.currentRun.seenClueIds.length;
-  const unread = state.currentRun.dmNotificationUnlocked && !state.currentRun.conversationSeenNpcIds.includes("dormManager");
+  const unread = state.currentRun.liveFeedReleasedIds.includes("dorm-warning");
   return <>
-    <CommunityHeader onMessages={openMessages} onHome={() => action("TRIGGER_EXIT", { endingId: "exit" })} onSearch={(query) => { action("SEARCH", { query }); setSearchOpen(true); }} unread={unread} />
+    <CommunityHeader onMessages={openMessages} onHome={handleHome} time={state.gameTime} onExitReading={state.currentRun.hasPublishedOwnAnswer && state.currentRun.unlockedExitIds.includes("death_404") && !state.currentRun.endingSettled ? () => action("TRIGGER_EXIT", { endingId: "death_404" }) : undefined} onSearch={(query) => { action("SEARCH", { query }); setSearchOpen(true); }} unread={unread} />
     <main className="layout">
       <div>
         {state.run > 1 && memory && <section className="card glitch memory-note">{memory}</section>}
         {state.currentRun.searchResultPageId ? <SearchResultPage state={state} back={() => { action("CLOSE_SEARCH_RESULT"); setSearchOpen(true); }} read={() => action("READ_SEARCH_RESULT", { resultId: state.currentRun.searchResultPageId! })} /> : <><QuestionHeader state={state} /><AnswerCard state={state} onRead={() => action("READ_ANSWER")} onComments={() => action("OPEN_COMMENTS")} onAuthorChat={() => setAuthorChatOpen(true)} onProfile={() => { action("OPEN_PROFILE", { profileId: "author" }); setProfileOpen(true); }} onEditHistory={() => { action("OPEN_EDIT_HISTORY"); setEditOpen(true); }} /></>}
-        {authorChatOpen && <ChatPanel fixedNpc="author" label="给答主发私信" phase={state.phase} run={state.run} context={state.currentRun.seenClueIds} history={state.currentRun.conversationHistory} onMessage={onChat} />}
-        {!state.currentRun.searchResultPageId && state.phase >= 2 && <CommentSection state={state} open={() => action("OPEN_FOLDED_COMMENTS")} reply={() => action("REPLY_USER_404")} onChat={onChat} />}
+        {authorChatOpen && <ChatPanel fixedNpc="author" label="给答主发私信" phase={state.phase} run={state.run} context={state.currentRun.seenClueIds} history={state.currentRun.conversationHistory} onMessage={onChat} onAttachment={(id) => { action("OPEN_IMAGE", { imageId: id }); setImageId(id); }} />}
+        {!state.currentRun.searchResultPageId && state.currentRun.commentsOpened && <CommentSection state={state} open={() => action("OPEN_FOLDED_COMMENTS")} reply={() => action("REPLY_AUTHOR_COMMENT")} onChat={onChat} onAttachment={(id) => { action("OPEN_IMAGE", { imageId: id }); setImageId(id); }} />}
         {demo && state.phase >= 3 && <EvidencePanel state={state} view={(clueId) => action("VIEW_CLUE", { clueId })} onImage={(id) => { action("OPEN_IMAGE", { imageId: id }); setImageId(id); }} />}
         {state.currentRun.draftAvailable && <DraftPanel state={state} open={() => action("OPEN_DRAFT")} publish={() => action("PUBLISH_ANSWER")} />}
         <OwnAnswerCard state={state} onDelete={() => action("TRIGGER_EXIT", { endingId: "delete" })} />
@@ -87,7 +93,7 @@ export default function Home() {
         {demo && <><GlitchLayer pollution={state.pollution} stopped={state.timeStopped} /><RulePanel state={state} view={(ruleId) => action("VIEW_RULE", { ruleId })} />{(["comments", "dorm", "rules", "evidence", "draft"] as const).map((node) => <RiskChoicePanel key={node} state={state} node={node} choose={(selectedNode, choice) => action("CHOOSE_RISK", { node: selectedNode, choice })} />)}<section className="card"><h3>当前周目</h3><div className="meta">第 {state.run} 周目 · pollution {state.pollution}</div><div className="actions"><button className="ghost" onClick={state.reset}>重置存档</button><button onClick={() => runToPublish()}>跳到发布</button><button onClick={forceDelete}>强制 C 结局</button><ApiHealth /></div></section></>}
       </aside>
     </main>
-    <MessageDrawer state={state} open={messagesOpen} close={() => setMessagesOpen(false)} phase={state.phase} onOpen={() => { action("CHOOSE_RISK", { node: "dorm", choice: "danger" }); action("VIEW_CLUE", { clueId: "C2" }); }} onReply={() => action("REPLY_USER_404")} onChat={onChat} />
+    <MessageDrawer state={state} open={messagesOpen} close={() => setMessagesOpen(false)} phase={state.phase} onOpen={() => action("OPEN_DORM_MESSAGE")} onReply={() => action("REPLY_AUTHOR_COMMENT")} onChat={onChat} onAttachment={(id) => { action("OPEN_IMAGE", { imageId: id }); setImageId(id); }} />
     <SavedSheet state={state} open={savedOpen} close={() => setSavedOpen(false)} viewRule={(ruleId) => action("VIEW_RULE", { ruleId })} viewClue={(clueId) => action("VIEW_CLUE", { clueId })} />
     <MobileDock savedCount={savedCount} unread={unread} onSaved={() => setSavedOpen(true)} onMessages={openMessages} />
     {searchOpen && <SearchDrawer state={state} close={() => setSearchOpen(false)} openResult={(resultId) => { action("OPEN_SEARCH_RESULT", { resultId }); setSearchOpen(false); }} />}

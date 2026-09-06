@@ -10,6 +10,7 @@ async function publish(page: Page, ending: "death_404" | "exit" | "delete") {
   await page.getByRole("button", { name: "展开 18 条折叠评论" }).click();
   await page.getByRole("button", { name: "回复" }).click();
   await page.getByRole("button", { name: "打开原始附件" }).click();
+  await page.getByRole("button", { name: "打开记录" }).nth(2).click();
   if (ending === "delete") {
     await page.getByRole("button", { name: "第5次编辑" }).click();
     await page.getByRole("dialog", { name: "回答编辑记录" }).getByRole("button", { name: "比较版本" }).nth(1).click();
@@ -18,7 +19,7 @@ async function publish(page: Page, ending: "death_404" | "exit" | "delete") {
     await page.getByLabel("搜索问题").fill("404");
     await page.getByLabel("搜索问题").press("Enter");
     await page.getByRole("dialog", { name: "搜索结果" }).getByRole("button", { name: /明德楼以前有 404/ }).click();
-    await page.getByRole("button", { name: "查看缓存摘要" }).click();
+    await page.getByRole("button", { name: "查看缓存" }).click();
     await page.getByRole("button", { name: /返回搜索结果/ }).click();
     await page.getByRole("dialog", { name: "搜索结果" }).getByRole("button", { name: "关闭" }).click();
   }

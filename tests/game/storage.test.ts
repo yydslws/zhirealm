@@ -23,7 +23,7 @@ describe("本地存档", () => {
     const state = createInitialState() as any;
     state.previousRun = { run: 1, endingId: "exit", published: true, ownAnswerId: "old", answerDeleted: false, bindingReleased: false, seenClueIds: [] };
     const migrated = migrateState(state);
-    expect(migrated?.previousRun?.metUser404Seen).toBe("unknown");
+    expect(migrated?.previousRun?.metAuthorSeen).toBe("unknown");
     expect(migrated?.previousRun?.firstTopics.author).toBe("unknown");
   });
 

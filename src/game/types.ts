@@ -3,7 +3,7 @@ export type EndingId = "death_404" | "exit" | "delete" | "meltdown";
 export type ExitId = Exclude<EndingId, "meltdown">;
 export type RiskNodeId = "comments" | "dorm" | "rules" | "evidence" | "draft";
 export type RiskChoice = "safe" | "danger";
-export type NpcId = "user404" | "dormManager" | "author";
+export type NpcId = "author" | "dormManager";
 export type FirstTopic = "screenshot" | "rules" | "exit" | "identity" | "unknown";
 export type IntentId = "WARN_AUTHOR" | "PUSH_AUTHOR" | "ASK_PHOTO" | "CHECK_DOOR" | "ASK_SONG_YAN" | "ASK_DORM" | "ASK_REGISTER" | "ASK_MAP" | "TELL_RETURN" | "DELETE_HINT" | "ASK_OCCUPANTS" | "ASK_CHEN_DU" | "UNKNOWN" | "SMALL_TALK";
 export type WorldEvent =
@@ -19,18 +19,18 @@ export type WorldEvent =
 export type LiveEventId = "author-arrived" | "author-door" | "author-deleted" | "dorm-warning";
 export type IntentRecord = { npc: NpcId; intent: IntentId; text: string };
 
-export type ChatMessage = { role: "user" | "assistant"; text: string; npc?: NpcId | "unknown" };
+export type LiveEvent = { id: LiveEventId; actor: NpcId; surface: "comment" | "dm"; text: string };
+export type ChatMessage = { role: "user" | "assistant"; text: string; npc: NpcId | "unknown"; attachmentId?: string };
 
 export type CurrentRun = {
   hasReadP01Answer: boolean;
   nightNoticeVisible: boolean;
   foldedCommentCount: number;
-  hasSeenUser404Comment: boolean;
-  hasRepliedUser404: boolean;
+  hasSeenAnomalyComment: boolean;
+  hasRepliedAuthorComment: boolean;
   seenRuleIds: string[];
   seenClueIds: string[];
   conversationSeenNpcIds: NpcId[];
-  user404FirstTopic: FirstTopic | null;
   dormManagerFirstTopic: FirstTopic | null;
   authorFirstTopic: FirstTopic | null;
   conversationHistory: ChatMessage[];
@@ -80,10 +80,11 @@ export type CurrentRun = {
   commentsOpened: boolean;
   foldedCountShifted: boolean;
   liveFeedPaused: boolean;
+  liveFeedStarted: boolean;
   authorPath: "outside" | "inside";
   photoInspectionOpen: boolean;
   inlineReplyOpen: boolean;
-  dmNotificationUnlocked: boolean;
+  dmTriggerPending: boolean;
 };
 
 export type PreviousRun = {
@@ -93,8 +94,8 @@ export type PreviousRun = {
   ownAnswerId: string | null;
   answerDeleted: boolean;
   bindingReleased: boolean;
-  metUser404Seen: boolean | "unknown";
-  user404Replied: boolean | "unknown";
+  metAuthorSeen: boolean | "unknown";
+  authorReplied: boolean | "unknown";
   hasSeenDormOpening: boolean | "unknown";
   hasChattedDormManager: boolean | "unknown";
   seenClueIds: string[];
@@ -119,7 +120,7 @@ export type GameState = {
 export type GameAction =
   | { type: "READ_ANSWER"; actionId: string }
   | { type: "OPEN_FOLDED_COMMENTS"; actionId: string }
-  | { type: "REPLY_USER_404"; actionId: string }
+  | { type: "REPLY_AUTHOR_COMMENT"; actionId: string }
   | { type: "OPEN_DORM_MESSAGE"; actionId: string }
   | { type: "VIEW_RULE"; ruleId: string; actionId: string }
   | { type: "VIEW_CLUE"; clueId: string; actionId: string }

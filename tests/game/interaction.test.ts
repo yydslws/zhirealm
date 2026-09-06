@@ -25,11 +25,23 @@ describe("三层互动", () => {
   });
 
   it("404 回复不打开宿管，收到联系提示后才解锁私信通知", () => {
-    let state = gameReducer({ ...createInitialState(), phase: 2 }, { type: "REPLY_USER_404", actionId: "reply" });
-    expect(state.currentRun.conversationSeenNpcIds).toContain("user404");
+    let state = gameReducer({ ...createInitialState(), phase: 2 }, { type: "REPLY_AUTHOR_COMMENT", actionId: "reply" });
+    expect(state.currentRun.conversationSeenNpcIds).toContain("author");
     expect(state.currentRun.conversationSeenNpcIds).not.toContain("dormManager");
-    state = gameReducer(state, { type: "CHAT_NPC", npc: "user404", text: "你是谁？", reply: "之后会有人联系你。", actionId: "chat" });
-    expect(state.currentRun.dmNotificationUnlocked).toBe(true);
+    state = gameReducer(state, { type: "CHAT_NPC", npc: "author", text: "你是谁？", reply: "之后会有人联系你。", actionId: "chat" });
+    expect(state.currentRun.dmTriggerPending).toBe(true);
+  });
+
+  it("搜索结果不会单独解锁草稿，异常评论出现后证据门槛才满足", () => {
+    let state = gameReducer(createInitialState(), { type: "SEARCH", query: "404", actionId: "gate-1" });
+    state = gameReducer(state, { type: "OPEN_SEARCH_RESULT", resultId: "search-404", actionId: "gate-2" });
+    state = gameReducer(state, { type: "READ_SEARCH_RESULT", resultId: "search-404", actionId: "gate-3" });
+    expect(state.currentRun.draftAvailable).toBe(false);
+    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C3", actionId: "gate-spatial" });
+    state = gameReducer(state, { type: "OPEN_COMMENTS", actionId: "gate-4" });
+    state = gameReducer(state, { type: "SHIFT_FOLDED_COUNT", actionId: "gate-5" });
+    state = gameReducer(state, { type: "OPEN_FOLDED_COMMENTS", actionId: "gate-6" });
+    expect(state.currentRun.draftAvailable).toBe(true);
   });
 
   it("AI 事件经过引擎校验后才能揭示线索", () => {
@@ -49,7 +61,7 @@ describe("三层互动", () => {
   });
 
   it("直播事件只释放一次", () => {
-    const state = { ...createInitialState(), phase: 3 };
+    const state = { ...createInitialState(), phase: 3, currentRun: { ...createInitialState().currentRun, liveFeedStarted: true } };
     const once = gameReducer(state, { type: "RELEASE_LIVE_EVENT", eventId: "author-arrived", actionId: "live-1" });
     const twice = gameReducer(once, { type: "RELEASE_LIVE_EVENT", eventId: "author-arrived", actionId: "live-2" });
     expect(once.currentRun.liveFeedReleasedIds).toEqual(["author-arrived"]);

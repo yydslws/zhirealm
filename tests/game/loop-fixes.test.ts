@@ -6,13 +6,13 @@ describe("互动闭环修正", () => {
   it("打开评论和展开折叠评论是两个动作", () => {
     const opened = gameReducer(createInitialState(), { type: "OPEN_COMMENTS", actionId: "comments" });
     expect(opened.currentRun.commentsOpened).toBe(true);
-    expect(opened.currentRun.hasSeenUser404Comment).toBe(false);
+    expect(opened.currentRun.hasSeenAnomalyComment).toBe(false);
     expect(opened.currentRun.foldedCommentCount).toBe(17);
     const shifted = gameReducer(opened, { type: "SHIFT_FOLDED_COUNT", actionId: "shift" });
     expect(shifted.currentRun.foldedCountShifted).toBe(true);
     expect(shifted.currentRun.foldedCommentCount).toBe(18);
     const anomaly = gameReducer(shifted, { type: "OPEN_FOLDED_COMMENTS", actionId: "folded" });
-    expect(anomaly.currentRun.hasSeenUser404Comment).toBe(true);
+    expect(anomaly.currentRun.hasSeenAnomalyComment).toBe(true);
   });
 
   it("警告答主会暂停直播，推进答主会进入危险路线", () => {

@@ -33,8 +33,8 @@ export const imageDetails: Record<string, { title: string; details: string[] }> 
 };
 
 export const liveEvents = [
-  { id: "author-arrived" as const, text: "南楼旧床板：我到通道口了。" },
-  { id: "author-door" as const, text: "南楼旧床板：门牌被刮掉了，里面有人敲门。" },
-  { id: "author-deleted" as const, text: "南楼旧床板：门上没有号码。" },
-  { id: "dorm-warning" as const, text: "宿管阿姨：谁让你联系他的？" },
+  { id: "author-arrived" as const, actor: "author" as const, surface: "comment" as const, text: "我到通道口了。" },
+  { id: "author-door" as const, actor: "author" as const, surface: "comment" as const, text: "门牌被刮掉了，里面有人敲门。" },
+  { id: "author-deleted" as const, actor: "author" as const, surface: "comment" as const, text: "门上没有号码。" },
+  { id: "dorm-warning" as const, actor: "dormManager" as const, surface: "dm" as const, text: "谁让你联系他的？" },
 ];

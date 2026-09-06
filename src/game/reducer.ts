@@ -8,15 +8,15 @@ import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, 
 
 const initialRun = (): CurrentRun => ({
   hasReadP01Answer: false, nightNoticeVisible: false, foldedCommentCount: 17,
-  hasSeenUser404Comment: false, hasRepliedUser404: false, seenRuleIds: [], seenClueIds: [],
-  conversationSeenNpcIds: [], user404FirstTopic: null, dormManagerFirstTopic: null, authorFirstTopic: null,
+  hasSeenAnomalyComment: false, hasRepliedAuthorComment: false, seenRuleIds: [], seenClueIds: [],
+  conversationSeenNpcIds: [], dormManagerFirstTopic: null, authorFirstTopic: null,
   conversationHistory: [], draftAvailable: false, phase05Available: false, draftUnlockedBy: [],
   draftPreviewText: null, publishSnapshotText: null, hasPublishedOwnAnswer: false, ownAnswerRegistered: false,
   ownAnswerId: null, ownAnswerRunId: null, ownAnswerText: null, ownAnswerVisible: false, ownAnswerDeleted: false,
   ownAnswerBindingActive: false, phase06Available: false, endingActionLock: false, endingSettled: false,
   endingId: null, endingEventId: null, endingScreenIndex: 0, pendingEndingId: null,
   bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, riskConsequences: {}, unlockedExitIds: [], meltdown: false, meltdownReason: null, retryAvailable: false,
-  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], searchResultPageId: null, readSearchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, authorPath: "outside", photoInspectionOpen: false, inlineReplyOpen: false, dmNotificationUnlocked: false,
+  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], searchResultPageId: null, readSearchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, liveFeedStarted: false, authorPath: "outside", photoInspectionOpen: false, inlineReplyOpen: false, dmTriggerPending: false,
 });
 
 export function createInitialState(): GameState {
@@ -33,9 +33,9 @@ function summarizeRun(state: GameState, r = state.currentRun): PreviousRun {
   return {
     run: state.run, endingId: r.endingId!, published: r.hasPublishedOwnAnswer, ownAnswerId: r.endingId === "delete" ? null : r.ownAnswerId,
     answerDeleted: r.ownAnswerDeleted, bindingReleased: !r.ownAnswerBindingActive,
-    metUser404Seen: r.hasSeenUser404Comment, user404Replied: r.hasRepliedUser404,
+    metAuthorSeen: r.hasSeenAnomalyComment, authorReplied: r.hasRepliedAuthorComment,
     hasSeenDormOpening: r.conversationSeenNpcIds.includes("dormManager"), hasChattedDormManager: r.conversationHistory.some((m) => m.role === "user"),
-    seenClueIds: [...r.seenClueIds], firstTopics: { user404: r.user404FirstTopic, dormManager: r.dormManagerFirstTopic, author: r.authorFirstTopic }, playerInputs: r.intentHistory.slice(-3).map((item) => item.text), lastIntent: r.intentHistory.at(-1)?.intent ?? null,
+    seenClueIds: [...r.seenClueIds], firstTopics: { dormManager: r.dormManagerFirstTopic, author: r.authorFirstTopic }, playerInputs: r.intentHistory.slice(-3).map((item) => item.text), lastIntent: r.intentHistory.at(-1)?.intent ?? null,
   };
 }
 
@@ -52,6 +52,10 @@ const consequenceForRisk: Record<RiskNodeId, Record<RiskChoice, string>> = {
   evidence: { safe: "你只保留了能确认来源的证据。", danger: "模糊证据里出现了宋砚的名字，随后又被划掉。" },
   draft: { safe: "你把草稿留在这里，先回去核实。", danger: "草稿自动补完了最后一句：不要让它知道你已经看见。" },
 };
+
+function hasEnoughEvidence(run: CurrentRun) {
+  return run.hasSeenAnomalyComment && run.seenClueIds.some((id) => ["C1", "C3"].includes(id)) && run.seenClueIds.some((id) => ["C2", "C4", "C5"].includes(id));
+}
 
 function resultIds(query: string) {
   const q = query.toLowerCase();
@@ -79,7 +83,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.currentRun.commentsOpened && !state.currentRun.foldedCountShifted) next = { ...state, currentRun: { ...state.currentRun, foldedCountShifted: true, foldedCommentCount: 18 } };
       break;
     case "OPEN_FOLDED_COMMENTS":
-      if ((state.currentRun.commentsOpened && state.currentRun.foldedCountShifted || !state.currentRun.commentsOpened) && !state.currentRun.hasSeenUser404Comment) next = { ...state, scene: "comments", phase: 2, gameTime: "02:00", pollution: state.pollution + 1, currentRun: { ...state.currentRun, commentsOpened: true, foldedCountShifted: true, foldedCommentCount: 18, hasSeenUser404Comment: true, riskChoices: { ...state.currentRun.riskChoices, comments: "danger" }, riskConsequences: { ...state.currentRun.riskConsequences, comments: consequenceForRisk.comments.danger } } };
+      if ((state.currentRun.commentsOpened && state.currentRun.foldedCountShifted || !state.currentRun.commentsOpened) && !state.currentRun.hasSeenAnomalyComment) { const run = { ...state.currentRun, commentsOpened: true, foldedCountShifted: true, foldedCommentCount: 18, hasSeenAnomalyComment: true, riskChoices: { ...state.currentRun.riskChoices, comments: "danger" as const }, riskConsequences: { ...state.currentRun.riskConsequences, comments: consequenceForRisk.comments.danger } }; next = { ...state, scene: "comments", phase: Math.max(state.phase, 2), gameTime: "02:00", pollution: state.pollution + 1, currentRun: { ...run, draftAvailable: hasEnoughEvidence(run) } }; }
       break;
     case "CHOOSE_RISK": {
       if (state.currentRun.riskChoices[action.node] || state.currentRun.meltdown || state.currentRun.endingSettled || state.phase < minPhaseForRisk[action.node] || (action.node === "draft" && !state.currentRun.draftAvailable)) break;
@@ -91,10 +95,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, scene: action.node === "draft" && action.choice === "danger" ? "draft" : state.scene, phase: action.node === "draft" && action.choice === "danger" ? 5 : action.node === "dorm" && action.choice === "danger" ? 4 : state.phase, pollution: state.pollution + (action.choice === "danger" ? 1 : 0), currentRun: { ...state.currentRun, riskChoices: choices, riskConsequences: consequences, unlockedExitIds: exits, draftPreviewText: draft } };
       break;
     }
-    case "REPLY_USER_404":
-      next = { ...state, scene: "comments", phase: Math.max(state.phase, 3), currentRun: { ...state.currentRun, hasRepliedUser404: true, inlineReplyOpen: true, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("user404") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "user404"] } };
+    case "REPLY_AUTHOR_COMMENT":
+      next = { ...state, scene: "comments", phase: Math.max(state.phase, 3), currentRun: { ...state.currentRun, hasRepliedAuthorComment: true, inlineReplyOpen: true, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("author") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "author"] } };
       break;
     case "OPEN_DORM_MESSAGE":
+      if (!state.currentRun.liveFeedReleasedIds.includes("dorm-warning")) break;
       next = { ...state, scene: "messages", phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("dormManager") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "dormManager"] } };
       break;
     case "VIEW_RULE":
@@ -105,7 +110,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const unlock = action.clueId === "C2" || action.clueId === "C4";
       const safeExit: ExitId | null = action.clueId === "C2" ? "death_404" : action.clueId === "C4" ? "delete" : null;
       const exits = safeExit && !state.currentRun.unlockedExitIds.includes(safeExit) ? [...state.currentRun.unlockedExitIds, safeExit] : state.currentRun.unlockedExitIds;
-      next = { ...state, scene: "investigation", phase: Math.max(state.phase, 4), gameTime: "02:07", currentRun: { ...state.currentRun, seenClueIds: seen, unlockedExitIds: exits, draftAvailable: state.currentRun.draftAvailable || unlock, phase05Available: state.currentRun.phase05Available || unlock, draftUnlockedBy: unlock && !state.currentRun.draftUnlockedBy.includes(action.clueId) ? [...state.currentRun.draftUnlockedBy, action.clueId] : state.currentRun.draftUnlockedBy } };
+      const run = { ...state.currentRun, seenClueIds: seen, unlockedExitIds: exits, phase05Available: state.currentRun.phase05Available || unlock, draftUnlockedBy: unlock && !state.currentRun.draftUnlockedBy.includes(action.clueId) ? [...state.currentRun.draftUnlockedBy, action.clueId] : state.currentRun.draftUnlockedBy };
+      next = { ...state, scene: "investigation", phase: Math.max(state.phase, 4), gameTime: "02:07", currentRun: { ...run, draftAvailable: hasEnoughEvidence(run) } };
       break;
     }
     case "OPEN_DRAFT":
@@ -154,15 +160,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const intent = action.intent ?? classifyIntent(action.text, action.npc);
         const fallback = fallbackIntentEvent(intent, action.npc);
         const event = validateIntentEvent(state, action.npc, intent, action.event ?? fallback.event);
-        const chatted = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user" as const, text: action.text, npc: action.npc }, { role: "assistant" as const, text: action.reply || fallback.text, npc: action.npc }], intentHistory: [...state.currentRun.intentHistory, { npc: action.npc, intent, text: action.text }].slice(-20), lastPlayerInput: action.text } };
+        const assistant = { role: "assistant" as const, text: action.reply || fallback.text, npc: action.npc, ...(event.type === "SHOW_ATTACHMENT" ? { attachmentId: event.attachmentId } : {}) };
+        const chatted = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user" as const, text: action.text, npc: action.npc }, assistant], intentHistory: [...state.currentRun.intentHistory, { npc: action.npc, intent, text: action.text }].slice(-20), lastPlayerInput: action.text } };
         next = applyWorldEvent(chatted, event);
         if (intent === "WARN_AUTHOR") next = { ...next, currentRun: { ...next.currentRun, liveFeedPaused: true, authorPath: "outside" } };
-        if (intent === "PUSH_AUTHOR") next = { ...next, pollution: next.pollution + 1, currentRun: { ...next.currentRun, liveFeedPaused: false, authorPath: "inside" } };
-        if (intent === "ASK_PHOTO" || intent === "CHECK_DOOR") next = { ...next, currentRun: { ...next.currentRun, photoInspectionOpen: true, liveFeedPaused: true } };
+        if (intent === "PUSH_AUTHOR") next = { ...next, pollution: next.pollution + 1, currentRun: { ...next.currentRun, liveFeedPaused: false, liveFeedStarted: true, authorPath: "inside" } };
+        if (intent === "ASK_PHOTO" || intent === "CHECK_DOOR") next = { ...next, currentRun: { ...next.currentRun, liveFeedPaused: true } };
         if (intent === "TELL_RETURN" && !next.currentRun.unlockedExitIds.includes("exit")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "exit"] } };
         if (intent === "DELETE_HINT" && !next.currentRun.unlockedExitIds.includes("delete")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "delete"] } };
         if (intent === "ASK_CHEN_DU" && !next.currentRun.seenClueIds.includes("C5")) next = { ...next, currentRun: { ...next.currentRun, seenClueIds: [...next.currentRun.seenClueIds, "C5"], draftAvailable: true } };
-        if (action.npc === "user404" && /联系你|有人会联系/.test(action.reply)) next = { ...next, currentRun: { ...next.currentRun, dmNotificationUnlocked: true } };
+        if (action.npc === "author" && /有人会联系你|会联系你|联系你/.test(action.reply || fallback.text)) next = { ...next, currentRun: { ...next.currentRun, dmTriggerPending: true } };
+        next = { ...next, currentRun: { ...next.currentRun, draftAvailable: hasEnoughEvidence(next.currentRun) } };
       }
       break;
     case "SEARCH":
@@ -176,7 +184,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.currentRun.searchResultPageId !== action.resultId) break;
       const read = state.currentRun.readSearchResultIds.includes(action.resultId) ? state.currentRun.readSearchResultIds : [...state.currentRun.readSearchResultIds, action.resultId];
       const clueId = action.resultId === "search-404" || action.resultId === "search-songyan" ? "C2" : action.resultId === "search-mingde" ? "C1" : action.resultId === "search-chendu" ? "C5" : null;
-      next = { ...state, scene: "investigation", phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, readSearchResultIds: read, seenClueIds: clueId ? [...new Set([...state.currentRun.seenClueIds, clueId])] : state.currentRun.seenClueIds, unlockedExitIds: ["search-404", "search-songyan"].includes(action.resultId) && !state.currentRun.unlockedExitIds.includes("death_404") ? [...state.currentRun.unlockedExitIds, "death_404"] : state.currentRun.unlockedExitIds, draftAvailable: true } };
+      const unlockedExitIds: ExitId[] = ["search-404", "search-songyan"].includes(action.resultId) && !state.currentRun.unlockedExitIds.includes("death_404") ? [...state.currentRun.unlockedExitIds, "death_404"] : state.currentRun.unlockedExitIds;
+      const run = { ...state.currentRun, readSearchResultIds: read, seenClueIds: clueId ? [...new Set([...state.currentRun.seenClueIds, clueId])] : state.currentRun.seenClueIds, unlockedExitIds };
+      next = { ...state, scene: "investigation", currentRun: { ...run, draftAvailable: hasEnoughEvidence(run) } };
       break;
     }
     case "CLOSE_SEARCH_RESULT":
@@ -199,7 +209,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       break;
     case "RELEASE_LIVE_EVENT":
       if (state.currentRun.liveFeedReleasedIds.includes(action.eventId) || state.phase < 3 || !canReleaseLiveEvent(state, action.eventId)) break;
-      next = { ...state, currentRun: { ...state.currentRun, liveFeedReleasedIds: [...state.currentRun.liveFeedReleasedIds, action.eventId], worldEvents: [...state.currentRun.worldEvents, { type: "ADD_COMMENT", commentId: action.eventId } as WorldEvent] } };
+      next = { ...state, currentRun: { ...state.currentRun, liveFeedReleasedIds: [...state.currentRun.liveFeedReleasedIds, action.eventId], dmTriggerPending: action.eventId === "dorm-warning" ? false : state.currentRun.dmTriggerPending, worldEvents: action.eventId === "dorm-warning" ? state.currentRun.worldEvents : [...state.currentRun.worldEvents, { type: "ADD_COMMENT", commentId: action.eventId } as WorldEvent] } };
       break;
     case "OPEN_IMAGE_REGION":
       next = { ...state, currentRun: { ...state.currentRun, photoInspectionOpen: true, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])] } };

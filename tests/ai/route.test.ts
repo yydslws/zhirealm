@@ -11,8 +11,8 @@ describe("AI 边界", () => {
   });
 
   it("无 API 时提供角色固定回复", () => {
-    expect(fallbackForNpc("user404")).toContain("截图");
-    expect(fallbackForNpc("dormManager")).toContain("按我说的做");
+    expect(fallbackForNpc("author")).toContain("404");
+    expect(fallbackForNpc("dormManager")).toContain("别再联系他");
   });
 
   it("失败后只自动重试一次", async () => {

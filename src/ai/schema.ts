@@ -11,14 +11,14 @@ export const aiResponseSchema = z.object({
     z.object({ type: z.literal("DELETE_COMMENT"), commentId: z.string().max(80) }),
     z.object({ type: z.literal("EDIT_ANSWER"), versionId: z.string().max(40) }),
     z.object({ type: z.literal("SEND_DM"), messageId: z.string().max(80) }),
-    z.object({ type: z.literal("CHANGE_USERNAME"), npc: z.enum(["user404", "dormManager", "author"]), variant: z.string().max(80) }),
+    z.object({ type: z.literal("CHANGE_USERNAME"), npc: z.enum(["dormManager", "author"]), variant: z.string().max(80) }),
     z.object({ type: z.literal("SHOW_ATTACHMENT"), attachmentId: z.string().max(80) }),
-    z.object({ type: z.literal("CHANGE_NPC_ATTITUDE"), npc: z.enum(["user404", "dormManager", "author"]), delta: z.union([z.literal(-1), z.literal(1)]) }),
+    z.object({ type: z.literal("CHANGE_NPC_ATTITUDE"), npc: z.enum(["dormManager", "author"]), delta: z.union([z.literal(-1), z.literal(1)]) }),
   ]),
 });
 
 export const aiRequestSchema = z.object({
-  npc: z.enum(["user404", "dormManager", "author"]),
+  npc: z.enum(["dormManager", "author"]),
   phase: z.number().int().min(1).max(7),
   message: z.string().min(1).max(300),
   context: z.array(z.string()).max(20).default([]),

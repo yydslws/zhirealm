@@ -75,7 +75,7 @@ describe("知境主线状态机", () => {
     const repeated = gameReducer(opened, { type: "OPEN_FOLDED_COMMENTS", actionId: "a2" });
 
     expect(opened.currentRun.foldedCommentCount).toBe(18);
-    expect(opened.currentRun.hasSeenUser404Comment).toBe(true);
+    expect(opened.currentRun.hasSeenAnomalyComment).toBe(true);
     expect(repeated).toEqual(opened);
   });
 
@@ -91,6 +91,8 @@ describe("知境主线状态机", () => {
   it("发布后创建本轮回答并停在 02:07", () => {
     let state = createInitialState();
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C2", actionId: "c2" });
+    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C3", actionId: "c3" });
+    state = gameReducer(state, { type: "OPEN_FOLDED_COMMENTS", actionId: "comments" });
     state = gameReducer(state, { type: "OPEN_DRAFT", actionId: "d1" });
     state = gameReducer(state, { type: "PUBLISH_ANSWER", actionId: "p1" });
 
@@ -104,6 +106,8 @@ describe("知境主线状态机", () => {
   it("C 结局删除回答且结算只发生一次", () => {
     let state = createInitialState();
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C4", actionId: "c4" });
+    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C3", actionId: "c3" });
+    state = gameReducer(state, { type: "OPEN_FOLDED_COMMENTS", actionId: "comments" });
     state = gameReducer(state, { type: "OPEN_DRAFT", actionId: "d1" });
     state = gameReducer(state, { type: "PUBLISH_ANSWER", actionId: "p1" });
     state = gameReducer(state, { type: "CHOOSE_ENDING", endingId: "delete", actionId: "e1" });
@@ -124,23 +128,27 @@ describe("知境主线状态机", () => {
 
   it("NPC 对话只写入当前轮历史，不改变剧情真相", () => {
     const state = gameReducer(createInitialState(), {
-      type: "CHAT_NPC", npc: "user404", text: "你是谁？", reply: "我只记得截图。", actionId: "chat-1",
+      type: "CHAT_NPC", npc: "author", text: "你是谁？", reply: "我只记得截图。", actionId: "chat-1",
     });
     expect(state.currentRun.conversationHistory).toEqual([
-      { role: "user", text: "你是谁？", npc: "user404" },
-      { role: "assistant", text: "我只记得截图。", npc: "user404" },
+      { role: "user", text: "你是谁？", npc: "author" },
+      { role: "assistant", text: "我只记得截图。", npc: "author" },
     ]);
     expect(state.currentRun.hasPublishedOwnAnswer).toBe(false);
   });
 
   it("打开宿管私信后开放调查证据", () => {
-    const state = gameReducer(createInitialState(), { type: "OPEN_DORM_MESSAGE", actionId: "m1" });
+    let state = { ...createInitialState(), phase: 3, currentRun: { ...createInitialState().currentRun, dmTriggerPending: true } };
+    state = gameReducer(state, { type: "RELEASE_LIVE_EVENT", eventId: "dorm-warning", actionId: "warning" });
+    state = gameReducer(state, { type: "OPEN_DORM_MESSAGE", actionId: "m1" });
     expect(state.phase).toBe(4);
   });
 
   it("只有结局第三屏重新进入才增加周目并保留摘要", () => {
     let state = createInitialState();
     state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C2", actionId: "c2" });
+    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C3", actionId: "c3" });
+    state = gameReducer(state, { type: "OPEN_FOLDED_COMMENTS", actionId: "comments" });
     state = gameReducer(state, { type: "CHOOSE_RISK", node: "dorm", choice: "danger", actionId: "dorm-exit" });
     state = gameReducer(state, { type: "PUBLISH_ANSWER", actionId: "p1" });
     state = gameReducer(state, { type: "CHOOSE_ENDING", endingId: "exit", actionId: "e1" });
@@ -156,7 +164,7 @@ describe("知境主线状态机", () => {
 
   it("清除上一轮记录不改变当前轮", () => {
     const state = createInitialState();
-    const withMemory = { ...state, run: 2, previousRun: { run: 1, endingId: "exit", published: true, ownAnswerId: "old", answerDeleted: false, bindingReleased: false, metUser404Seen: true, user404Replied: false, hasSeenDormOpening: true, hasChattedDormManager: false, seenClueIds: ["C2"], firstTopics: { user404: null, dormManager: null, author: null } } } as const;
+    const withMemory = { ...state, run: 2, previousRun: { run: 1, endingId: "exit", published: true, ownAnswerId: "old", answerDeleted: false, bindingReleased: false, metAuthorSeen: true, authorReplied: false, hasSeenDormOpening: true, hasChattedDormManager: false, seenClueIds: ["C2"], firstTopics: { dormManager: null, author: null } } } as const;
     const cleared = gameReducer(withMemory, { type: "CLEAR_PREVIOUS_RUN", actionId: "clear" });
     expect(cleared.previousRun).toBeNull();
     expect(cleared.run).toBe(2);

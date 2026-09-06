@@ -6,6 +6,8 @@ export const liveFeedBranches = {
 };
 
 export function canReleaseLiveEvent(state: GameState, eventId: LiveEventId) {
+  if (eventId === "dorm-warning") return state.currentRun.dmTriggerPending;
   if (state.currentRun.liveFeedPaused) return false;
+  if (!state.currentRun.liveFeedStarted) return false;
   return liveFeedBranches[state.currentRun.authorPath].includes(eventId);
 }

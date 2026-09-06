@@ -14,12 +14,12 @@ export function GET() {
 export async function POST(request: Request) {
   const input = aiRequestSchema.safeParse(await request.json().catch(() => null));
   if (!input.success) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
-  const { npc, phase, message, context, run } = input.data;
+  const { npc, phase, message, context, history, run } = input.data;
   const session = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "local";
   if (!allowRequest(session, run)) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   const intent = classifyIntent(message, npc);
   if (isForbiddenMessage(message)) return NextResponse.json({ ...fallbackIntentEvent(intent, npc), text: fallbackForNpc(npc), tone: "guarded" });
-  const prompt = buildPrompt(npc, phase, context, message);
+  const prompt = buildPrompt(npc, phase, context, message, history);
   const result = await withOneRetry(() => askDeepSeek(prompt));
   return NextResponse.json(result ?? fallbackIntentEvent(intent, npc));
 }

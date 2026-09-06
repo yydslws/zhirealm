@@ -9,5 +9,5 @@ export const fallbackIntentEvent = (intent: IntentId, npc: NpcId): { text: strin
   if (intent === "WARN_AUTHOR") return { ...base, text: "好，我先不进去。", event: { type: "CHANGE_NPC_ATTITUDE", npc: "author", delta: 1 } };
   if (intent === "PUSH_AUTHOR") return { ...base, text: "那我继续往里走。", event: { type: "ADD_COMMENT", commentId: "live-author-arrived" } };
   if (intent === "DELETE_HINT") return { ...base, text: "如果你想删掉，现在还来得及。", event: { type: "CHANGE_NPC_ATTITUDE", npc, delta: -1 } };
-  return { ...base, text: npc === "dormManager" ? "别问这些，按我说的做。" : npc === "user404" ? "我只记得那张照片。" : "我还在通道口。" };
+  return { ...base, text: npc === "dormManager" ? "别问这些，按我说的做。" : "我还在通道口。" };
 };
