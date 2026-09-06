@@ -4,11 +4,11 @@ export async function withOneRetry<T>(operation: () => Promise<T | null>) {
   return await operation() ?? await operation();
 }
 
-export async function askDeepSeek(prompt: string) {
+export async function askDeepSeek(prompt: string, timeoutMs = 5000) {
   const key = process.env.DEEPSEEK_API_KEY;
   if (!key) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const baseUrl = (process.env.AI_BASE_URL || "https://api.deepseek.com").replace(/\/$/, "");
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { askDeepSeek, withOneRetry } from "@/src/ai/client";
+import { askDeepSeek } from "@/src/ai/client";
 import { fallbackForNpc } from "@/src/ai/fallback";
 import { classifyIntent } from "@/src/ai/intents";
 import { fallbackIntentEvent } from "@/src/ai/events";
@@ -20,6 +20,8 @@ export async function POST(request: Request) {
   const intent = classifyIntent(message, npc);
   if (isForbiddenMessage(message)) return NextResponse.json({ ...fallbackIntentEvent(intent, npc), text: fallbackForNpc(npc), tone: "guarded" });
   const prompt = buildPrompt(npc, phase, context, message, history);
-  const result = await withOneRetry(() => askDeepSeek(prompt));
+  // One bounded model attempt keeps a slow/unstable upstream from making the
+  // page look like it is reconnecting; deterministic intent fallbacks remain available.
+  const result = await askDeepSeek(prompt);
   return NextResponse.json(result ?? fallbackIntentEvent(intent, npc));
 }

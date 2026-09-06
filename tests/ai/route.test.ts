@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fallbackForNpc } from "@/src/ai/fallback";
 import { aiResponseSchema } from "@/src/ai/schema";
-import { withOneRetry } from "@/src/ai/client";
+import { askDeepSeek, withOneRetry } from "@/src/ai/client";
 import { allowRequest } from "@/src/ai/rateLimit";
 import { fallbackIntentEvent } from "@/src/ai/events";
 
@@ -20,6 +20,22 @@ describe("AI 边界", () => {
     const result = await withOneRetry(async () => (++calls === 2 ? "ok" : null));
     expect(result).toBe("ok");
     expect(calls).toBe(2);
+  });
+
+  it("上游模型超时会快速返回离线结果", async () => {
+    const previousKey = process.env.DEEPSEEK_API_KEY;
+    process.env.DEEPSEEK_API_KEY = "test-key";
+    const previousFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = ((_input, init) => new Promise((_, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+      })) as typeof fetch;
+      await expect(askDeepSeek("test", 5)).resolves.toBeNull();
+    } finally {
+      globalThis.fetch = previousFetch;
+      if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
+      else process.env.DEEPSEEK_API_KEY = previousKey;
+    }
   });
 
   it("同一会话限制为 30 次请求", () => {
