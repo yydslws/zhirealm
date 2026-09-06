@@ -23,6 +23,7 @@ import { SearchDrawer } from "@/src/components/SearchDrawer";
 import { EditHistoryDrawer } from "@/src/components/EditHistoryDrawer";
 import { ProfileSheet } from "@/src/components/ProfileSheet";
 import { ImageInspectSheet } from "@/src/components/ImageInspectSheet";
+import { SearchResultPage } from "@/src/components/SearchResultPage";
 import { useGameStore } from "@/src/store/gameStore";
 import { isDemoMode } from "@/src/lib/demoMode";
 import type { IntentId, WorldEvent } from "@/src/game/types";
@@ -60,25 +61,24 @@ export default function Home() {
   const onChat = (npc: "user404" | "dormManager" | "author", text: string, reply: string, intent?: IntentId, event?: WorldEvent) => dispatch({ type: "CHAT_NPC", npc, text, reply, intent, event, actionId: id() });
   const runToPublish = (unlockDelete = false) => { action("READ_ANSWER"); action("OPEN_COMMENTS"); action("SHIFT_FOLDED_COUNT"); action("OPEN_FOLDED_COMMENTS"); action("REPLY_USER_404"); action("OPEN_DORM_MESSAGE"); action("VIEW_CLUE", { clueId: "C2" }); if (unlockDelete) action("CHOOSE_RISK", { node: "evidence", choice: "danger" }); action("OPEN_DRAFT"); action("PUBLISH_ANSWER"); };
   const forceDelete = () => { if (!state.currentRun.hasPublishedOwnAnswer) runToPublish(true); action("CHOOSE_ENDING", { endingId: "delete" }); action("CONFIRM_ENDING"); };
-  const openMessages = () => { action("OPEN_DORM_MESSAGE"); setMessagesOpen(true); };
+  const openMessages = () => { setMessagesOpen(true); };
   // Static community content renders immediately; hydration only replaces saved state.
   const memory = secondRunText(state.previousRun);
   const endingPanel = <EndingPanel state={state} choose={(endingId) => action("CHOOSE_ENDING", { endingId })} triggerExit={(endingId) => action("TRIGGER_EXIT", { endingId })} confirm={() => action("CONFIRM_ENDING")} cancel={() => action("CANCEL_ACTION")} advance={() => action("ADVANCE_ENDING_SCREEN")} reenter={() => action("REENTER_NEXT_RUN")} retry={() => action("RETRY_AFTER_MELTDOWN")} />;
   if (state.currentRun.meltdown) return <><CommunityHeader onMessages={openMessages} /><main className="meltdown-stage">{endingPanel}{demo && <button className="meltdown-reset" onClick={state.reset}>重置存档</button>}</main></>;
   const savedCount = state.currentRun.seenRuleIds.length + state.currentRun.seenClueIds.length;
-  const unread = state.phase >= 3 && !state.currentRun.conversationSeenNpcIds.includes("dormManager");
+  const unread = state.currentRun.dmNotificationUnlocked && !state.currentRun.conversationSeenNpcIds.includes("dormManager");
   return <>
-    <CommunityHeader onMessages={openMessages} onSearch={(query) => { action("SEARCH", { query }); setSearchOpen(true); }} unread={unread} />
+    <CommunityHeader onMessages={openMessages} onHome={() => action("TRIGGER_EXIT", { endingId: "exit" })} onSearch={(query) => { action("SEARCH", { query }); setSearchOpen(true); }} unread={unread} />
     <main className="layout">
       <div>
         {state.run > 1 && memory && <section className="card glitch memory-note">{memory}</section>}
-        <QuestionHeader state={state} />
-        <AnswerCard state={state} onRead={() => action("READ_ANSWER")} onComments={() => action("OPEN_COMMENTS")} onAuthorChat={() => setAuthorChatOpen(true)} onProfile={() => { action("OPEN_PROFILE", { profileId: "author" }); setProfileOpen(true); }} onEditHistory={() => { action("OPEN_EDIT_HISTORY"); setEditOpen(true); }} />
+        {state.currentRun.searchResultPageId ? <SearchResultPage state={state} back={() => { action("CLOSE_SEARCH_RESULT"); setSearchOpen(true); }} read={() => action("READ_SEARCH_RESULT", { resultId: state.currentRun.searchResultPageId! })} /> : <><QuestionHeader state={state} /><AnswerCard state={state} onRead={() => action("READ_ANSWER")} onComments={() => action("OPEN_COMMENTS")} onAuthorChat={() => setAuthorChatOpen(true)} onProfile={() => { action("OPEN_PROFILE", { profileId: "author" }); setProfileOpen(true); }} onEditHistory={() => { action("OPEN_EDIT_HISTORY"); setEditOpen(true); }} /></>}
         {authorChatOpen && <ChatPanel fixedNpc="author" label="给答主发私信" phase={state.phase} run={state.run} context={state.currentRun.seenClueIds} history={state.currentRun.conversationHistory} onMessage={onChat} />}
-        {state.phase >= 2 && <CommentSection state={state} open={() => action("OPEN_FOLDED_COMMENTS")} reply={() => { action("REPLY_USER_404"); openMessages(); }} />}
+        {!state.currentRun.searchResultPageId && state.phase >= 2 && <CommentSection state={state} open={() => action("OPEN_FOLDED_COMMENTS")} reply={() => action("REPLY_USER_404")} onChat={onChat} />}
         {demo && state.phase >= 3 && <EvidencePanel state={state} view={(clueId) => action("VIEW_CLUE", { clueId })} onImage={(id) => { action("OPEN_IMAGE", { imageId: id }); setImageId(id); }} />}
         {state.currentRun.draftAvailable && <DraftPanel state={state} open={() => action("OPEN_DRAFT")} publish={() => action("PUBLISH_ANSWER")} />}
-        <OwnAnswerCard state={state} />
+        <OwnAnswerCard state={state} onDelete={() => action("TRIGGER_EXIT", { endingId: "delete" })} />
         {endingPanel}
       </div>
       <aside className="side">

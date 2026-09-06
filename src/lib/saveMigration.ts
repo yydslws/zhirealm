@@ -27,6 +27,8 @@ export function migrateState(value: unknown): GameState | null {
   current.liveFeedReleasedIds ??= [];
   current.searchHistory ??= [];
   current.searchResultIds ??= [];
+  current.searchResultPageId ??= null;
+  current.readSearchResultIds ??= [];
   current.openedEditHistory ??= false;
   current.comparedEditVersionIds ??= [];
   current.profileViews ??= [];
@@ -37,6 +39,8 @@ export function migrateState(value: unknown): GameState | null {
   current.liveFeedPaused ??= false;
   current.authorPath ??= "outside";
   current.photoInspectionOpen ??= false;
+  current.inlineReplyOpen ??= false;
+  current.dmNotificationUnlocked ??= false;
   if (state.previousRun) {
     const previous = state.previousRun as Partial<PreviousRun>;
     state.previousRun = {

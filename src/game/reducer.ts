@@ -16,7 +16,7 @@ const initialRun = (): CurrentRun => ({
   ownAnswerBindingActive: false, phase06Available: false, endingActionLock: false, endingSettled: false,
   endingId: null, endingEventId: null, endingScreenIndex: 0, pendingEndingId: null,
   bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, riskConsequences: {}, unlockedExitIds: [], meltdown: false, meltdownReason: null, retryAvailable: false,
-  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, authorPath: "outside", photoInspectionOpen: false,
+  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], searchResultPageId: null, readSearchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, authorPath: "outside", photoInspectionOpen: false, inlineReplyOpen: false, dmNotificationUnlocked: false,
 });
 
 export function createInitialState(): GameState {
@@ -88,11 +88,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const exits = exit && !state.currentRun.unlockedExitIds.includes(exit) ? [...state.currentRun.unlockedExitIds, exit] : state.currentRun.unlockedExitIds;
       const consequences = { ...state.currentRun.riskConsequences, [action.node]: consequenceForRisk[action.node][action.choice] };
       const draft = action.node === "draft" && action.choice === "danger" ? buildDraft(state.currentRun) : state.currentRun.draftPreviewText;
-      next = { ...state, scene: action.node === "draft" && action.choice === "danger" ? "draft" : state.scene, phase: action.node === "draft" && action.choice === "danger" ? 5 : state.phase, pollution: state.pollution + (action.choice === "danger" ? 1 : 0), currentRun: { ...state.currentRun, riskChoices: choices, riskConsequences: consequences, unlockedExitIds: exits, draftPreviewText: draft } };
+      next = { ...state, scene: action.node === "draft" && action.choice === "danger" ? "draft" : state.scene, phase: action.node === "draft" && action.choice === "danger" ? 5 : action.node === "dorm" && action.choice === "danger" ? 4 : state.phase, pollution: state.pollution + (action.choice === "danger" ? 1 : 0), currentRun: { ...state.currentRun, riskChoices: choices, riskConsequences: consequences, unlockedExitIds: exits, draftPreviewText: draft } };
       break;
     }
     case "REPLY_USER_404":
-      next = { ...state, scene: "messages", phase: 3, currentRun: { ...state.currentRun, hasRepliedUser404: true, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("user404") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "user404"] } };
+      next = { ...state, scene: "comments", phase: Math.max(state.phase, 3), currentRun: { ...state.currentRun, hasRepliedUser404: true, inlineReplyOpen: true, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("user404") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "user404"] } };
       break;
     case "OPEN_DORM_MESSAGE":
       next = { ...state, scene: "messages", phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes("dormManager") ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, "dormManager"] } };
@@ -162,6 +162,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (intent === "TELL_RETURN" && !next.currentRun.unlockedExitIds.includes("exit")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "exit"] } };
         if (intent === "DELETE_HINT" && !next.currentRun.unlockedExitIds.includes("delete")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "delete"] } };
         if (intent === "ASK_CHEN_DU" && !next.currentRun.seenClueIds.includes("C5")) next = { ...next, currentRun: { ...next.currentRun, seenClueIds: [...next.currentRun.seenClueIds, "C5"], draftAvailable: true } };
+        if (action.npc === "user404" && /联系你|有人会联系/.test(action.reply)) next = { ...next, currentRun: { ...next.currentRun, dmNotificationUnlocked: true } };
       }
       break;
     case "SEARCH":
@@ -169,7 +170,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       break;
     case "OPEN_SEARCH_RESULT":
       if (!state.currentRun.searchResultIds.includes(action.resultId)) break;
-      next = { ...state, currentRun: { ...state.currentRun, searchResultIds: state.currentRun.searchResultIds, openedEditHistory: state.currentRun.openedEditHistory || action.resultId === "search-mingde", seenClueIds: action.resultId === "search-404" || action.resultId === "search-songyan" ? [...new Set([...state.currentRun.seenClueIds, "C2"])] : action.resultId === "search-mingde" ? [...new Set([...state.currentRun.seenClueIds, "C1"])] : action.resultId === "search-chendu" ? [...new Set([...state.currentRun.seenClueIds, "C5"])] : state.currentRun.seenClueIds, unlockedExitIds: ["search-404", "search-songyan"].includes(action.resultId) && !state.currentRun.unlockedExitIds.includes("death_404") ? [...state.currentRun.unlockedExitIds, "death_404"] : state.currentRun.unlockedExitIds, draftAvailable: state.currentRun.draftAvailable || ["search-404", "search-songyan", "search-mingde", "search-chendu"].includes(action.resultId) } };
+      next = { ...state, scene: "investigation", currentRun: { ...state.currentRun, searchResultPageId: action.resultId } };
+      break;
+    case "READ_SEARCH_RESULT": {
+      if (state.currentRun.searchResultPageId !== action.resultId) break;
+      const read = state.currentRun.readSearchResultIds.includes(action.resultId) ? state.currentRun.readSearchResultIds : [...state.currentRun.readSearchResultIds, action.resultId];
+      const clueId = action.resultId === "search-404" || action.resultId === "search-songyan" ? "C2" : action.resultId === "search-mingde" ? "C1" : action.resultId === "search-chendu" ? "C5" : null;
+      next = { ...state, scene: "investigation", phase: Math.max(state.phase, 4), currentRun: { ...state.currentRun, readSearchResultIds: read, seenClueIds: clueId ? [...new Set([...state.currentRun.seenClueIds, clueId])] : state.currentRun.seenClueIds, unlockedExitIds: ["search-404", "search-songyan"].includes(action.resultId) && !state.currentRun.unlockedExitIds.includes("death_404") ? [...state.currentRun.unlockedExitIds, "death_404"] : state.currentRun.unlockedExitIds, draftAvailable: true } };
+      break;
+    }
+    case "CLOSE_SEARCH_RESULT":
+      next = { ...state, currentRun: { ...state.currentRun, searchResultPageId: null } };
       break;
     case "OPEN_EDIT_HISTORY":
       next = { ...state, currentRun: { ...state.currentRun, openedEditHistory: true } };

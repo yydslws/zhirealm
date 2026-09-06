@@ -5,6 +5,13 @@ export const searchResults: Record<string, { title: string; summary: string; clu
   "search-mingde": { title: "明德楼四楼旧照片", summary: "3 个结果", clueId: "C1" },
 };
 
+export const searchResultPages: Record<string, { title: string; status: string; body: string }> = {
+  "search-404": { title: "明德楼以前有 404 吗？", status: "该问题已删除", body: "缓存摘要：\n2023 年明德楼四楼曾出现过一个没有登记的 404 房间。" },
+  "search-songyan": { title: "有人认识宋砚吗？", status: "该问题已删除", body: "缓存摘要：\n2023 年明德楼，有人见过宋砚和一张门牌被擦掉的照片。" },
+  "search-chendu": { title: "陈渡最后出现在哪里？", status: "0 个回答", body: "缓存摘要：\n最后一次有人回复：他在明德楼四楼，之后账号停止更新。" },
+  "search-mingde": { title: "明德楼四楼旧照片", status: "3 个结果", body: "缓存摘要：\n照片里有一扇没有门牌的门，墙边是一截蓝色水管。" },
+};
+
 export const editVersions = [
   { id: "v1", label: "23:14", text: "那里曾经住过四个人。" },
   { id: "v2", label: "23:31", text: "那里曾经住过三个人。" },

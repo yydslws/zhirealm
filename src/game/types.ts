@@ -70,6 +70,8 @@ export type CurrentRun = {
   liveFeedReleasedIds: LiveEventId[];
   searchHistory: string[];
   searchResultIds: string[];
+  searchResultPageId: string | null;
+  readSearchResultIds: string[];
   openedEditHistory: boolean;
   comparedEditVersionIds: string[];
   profileViews: string[];
@@ -80,6 +82,8 @@ export type CurrentRun = {
   liveFeedPaused: boolean;
   authorPath: "outside" | "inside";
   photoInspectionOpen: boolean;
+  inlineReplyOpen: boolean;
+  dmNotificationUnlocked: boolean;
 };
 
 export type PreviousRun = {
@@ -133,6 +137,8 @@ export type GameAction =
   | { type: "CHAT_NPC"; npc: NpcId; text: string; reply: string; intent?: IntentId; event?: WorldEvent; actionId: string }
   | { type: "SEARCH"; query: string; actionId: string }
   | { type: "OPEN_SEARCH_RESULT"; resultId: string; actionId: string }
+  | { type: "READ_SEARCH_RESULT"; resultId: string; actionId: string }
+  | { type: "CLOSE_SEARCH_RESULT"; actionId: string }
   | { type: "OPEN_EDIT_HISTORY"; actionId: string }
   | { type: "COMPARE_EDIT_VERSION"; versionId: string; actionId: string }
   | { type: "OPEN_PROFILE"; profileId: string; actionId: string }

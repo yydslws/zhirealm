@@ -16,6 +16,22 @@ describe("三层互动", () => {
     expect(state.currentRun.searchResultIds).toContain("search-404");
   });
 
+  it("搜索结果先打开页面，读完后才揭示线索", () => {
+    let state = gameReducer(createInitialState(), { type: "SEARCH", query: "宋砚", actionId: "search-songyan" });
+    state = gameReducer(state, { type: "OPEN_SEARCH_RESULT", resultId: "search-songyan", actionId: "open-result" });
+    expect(state.currentRun.seenClueIds).not.toContain("C2");
+    state = gameReducer(state, { type: "READ_SEARCH_RESULT", resultId: "search-songyan", actionId: "read-result" });
+    expect(state.currentRun.seenClueIds).toContain("C2");
+  });
+
+  it("404 回复不打开宿管，收到联系提示后才解锁私信通知", () => {
+    let state = gameReducer({ ...createInitialState(), phase: 2 }, { type: "REPLY_USER_404", actionId: "reply" });
+    expect(state.currentRun.conversationSeenNpcIds).toContain("user404");
+    expect(state.currentRun.conversationSeenNpcIds).not.toContain("dormManager");
+    state = gameReducer(state, { type: "CHAT_NPC", npc: "user404", text: "你是谁？", reply: "之后会有人联系你。", actionId: "chat" });
+    expect(state.currentRun.dmNotificationUnlocked).toBe(true);
+  });
+
   it("AI 事件经过引擎校验后才能揭示线索", () => {
     const state = gameReducer(createInitialState(), {
       type: "CHAT_NPC", npc: "author", text: "你认识宋砚吗？", reply: "……你在哪看到这个名字的？",
