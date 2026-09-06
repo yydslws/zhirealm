@@ -5,7 +5,7 @@ export type RiskNodeId = "comments" | "dorm" | "rules" | "evidence" | "draft";
 export type RiskChoice = "safe" | "danger";
 export type NpcId = "user404" | "dormManager" | "author";
 export type FirstTopic = "screenshot" | "rules" | "exit" | "identity" | "unknown";
-export type IntentId = "WARN_AUTHOR" | "PUSH_AUTHOR" | "ASK_PHOTO" | "CHECK_DOOR" | "ASK_SONG_YAN" | "ASK_DORM" | "ASK_REGISTER" | "ASK_MAP" | "TELL_RETURN" | "DELETE_HINT" | "ASK_OCCUPANTS" | "ASK_CHEN_DU";
+export type IntentId = "WARN_AUTHOR" | "PUSH_AUTHOR" | "ASK_PHOTO" | "CHECK_DOOR" | "ASK_SONG_YAN" | "ASK_DORM" | "ASK_REGISTER" | "ASK_MAP" | "TELL_RETURN" | "DELETE_HINT" | "ASK_OCCUPANTS" | "ASK_CHEN_DU" | "UNKNOWN" | "SMALL_TALK";
 export type WorldEvent =
   | { type: "NONE" }
   | { type: "REVEAL_CLUE"; clueId: "C1" | "C2" | "C3" | "C4" | "C5" }
@@ -75,6 +75,11 @@ export type CurrentRun = {
   profileViews: string[];
   imageInspections: string[];
   lastPlayerInput: string | null;
+  commentsOpened: boolean;
+  foldedCountShifted: boolean;
+  liveFeedPaused: boolean;
+  authorPath: "outside" | "inside";
+  photoInspectionOpen: boolean;
 };
 
 export type PreviousRun = {
@@ -133,4 +138,7 @@ export type GameAction =
   | { type: "OPEN_PROFILE"; profileId: string; actionId: string }
   | { type: "OPEN_IMAGE"; imageId: string; actionId: string }
   | { type: "INSPECT_IMAGE_REGION"; imageId: string; regionId: string; actionId: string }
-  | { type: "RELEASE_LIVE_EVENT"; eventId: LiveEventId; actionId: string };
+  | { type: "RELEASE_LIVE_EVENT"; eventId: LiveEventId; actionId: string }
+  | { type: "OPEN_COMMENTS"; actionId: string }
+  | { type: "SHIFT_FOLDED_COUNT"; actionId: string }
+  | { type: "OPEN_IMAGE_REGION"; imageId: string; regionId: string; actionId: string };

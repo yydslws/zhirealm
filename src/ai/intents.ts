@@ -16,5 +16,7 @@ const rules: Array<[IntentId, RegExp]> = [
 ];
 
 export function classifyIntent(message: string, _npc: NpcId): IntentId {
-  return rules.find(([, pattern]) => pattern.test(message))?.[0] ?? "ASK_OCCUPANTS";
+  const text = message.trim();
+  if (/^(你好|嗨|谢谢|感谢|早上好|晚安)[！!。\s]*$/.test(text)) return "SMALL_TALK";
+  return rules.find(([, pattern]) => pattern.test(text))?.[0] ?? "UNKNOWN";
 }

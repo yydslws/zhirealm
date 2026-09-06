@@ -5,6 +5,7 @@ test("临界污染确认后失控，并可重试本轮", async ({ page }) => {
   await page.getByRole("button", { name: "重置存档" }).click();
   await page.getByRole("button", { name: "展开阅读全文" }).click();
   await page.getByRole("button", { name: /24 条评论/ }).click();
+  await page.getByRole("button", { name: "展开 18 条折叠评论" }).click();
   await page.getByRole("button", { name: "回复" }).click();
   await page.getByRole("button", { name: "打开附件" }).click();
   await page.getByRole("button", { name: "关闭" }).first().click();

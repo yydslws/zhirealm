@@ -5,6 +5,7 @@ test("刷新保持当前轮，结局第三屏才进入二周目", async ({ page 
   await page.getByRole("button", { name: "重置存档" }).click();
   await page.getByRole("button", { name: "展开阅读全文" }).click();
   await page.getByRole("button", { name: /24 条评论/ }).click();
+  await page.getByRole("button", { name: "展开 18 条折叠评论" }).click();
   await page.reload();
   await expect(page.getByText(/终于有人回了/)).toBeVisible();
   await expect(page.getByText(/第 1 周目/)).toBeVisible();

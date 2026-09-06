@@ -3,6 +3,7 @@ import { canChooseEnding, canPublish } from "@/src/game/guards";
 import { applyWorldEvent, validateIntentEvent } from "@/src/game/engine";
 import { fallbackIntentEvent } from "@/src/ai/events";
 import { classifyIntent } from "@/src/ai/intents";
+import { canReleaseLiveEvent } from "@/src/game/liveFeed";
 import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskChoice, RiskNodeId, WorldEvent } from "@/src/game/types";
 
 const initialRun = (): CurrentRun => ({
@@ -15,7 +16,7 @@ const initialRun = (): CurrentRun => ({
   ownAnswerBindingActive: false, phase06Available: false, endingActionLock: false, endingSettled: false,
   endingId: null, endingEventId: null, endingScreenIndex: 0, pendingEndingId: null,
   bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, riskConsequences: {}, unlockedExitIds: [], meltdown: false, meltdownReason: null, retryAvailable: false,
-  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null,
+  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null, commentsOpened: false, foldedCountShifted: false, liveFeedPaused: false, authorPath: "outside", photoInspectionOpen: false,
 });
 
 export function createInitialState(): GameState {
@@ -71,8 +72,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "READ_ANSWER":
       next = { ...state, phase: Math.max(state.phase, 1), currentRun: { ...state.currentRun, hasReadP01Answer: true } };
       break;
+    case "OPEN_COMMENTS":
+      next = { ...state, scene: "comments", phase: Math.max(state.phase, 2), currentRun: { ...state.currentRun, commentsOpened: true, foldedCommentCount: 17 } };
+      break;
+    case "SHIFT_FOLDED_COUNT":
+      if (state.currentRun.commentsOpened && !state.currentRun.foldedCountShifted) next = { ...state, currentRun: { ...state.currentRun, foldedCountShifted: true, foldedCommentCount: 18 } };
+      break;
     case "OPEN_FOLDED_COMMENTS":
-      if (!state.currentRun.hasSeenUser404Comment) next = { ...state, scene: "comments", phase: 2, gameTime: "02:00", pollution: state.pollution + 1, currentRun: { ...state.currentRun, foldedCommentCount: 18, hasSeenUser404Comment: true, riskChoices: { ...state.currentRun.riskChoices, comments: "danger" }, riskConsequences: { ...state.currentRun.riskConsequences, comments: consequenceForRisk.comments.danger } } };
+      if ((state.currentRun.commentsOpened && state.currentRun.foldedCountShifted || !state.currentRun.commentsOpened) && !state.currentRun.hasSeenUser404Comment) next = { ...state, scene: "comments", phase: 2, gameTime: "02:00", pollution: state.pollution + 1, currentRun: { ...state.currentRun, commentsOpened: true, foldedCountShifted: true, foldedCommentCount: 18, hasSeenUser404Comment: true, riskChoices: { ...state.currentRun.riskChoices, comments: "danger" }, riskConsequences: { ...state.currentRun.riskConsequences, comments: consequenceForRisk.comments.danger } } };
       break;
     case "CHOOSE_RISK": {
       if (state.currentRun.riskChoices[action.node] || state.currentRun.meltdown || state.currentRun.endingSettled || state.phase < minPhaseForRisk[action.node] || (action.node === "draft" && !state.currentRun.draftAvailable)) break;
@@ -149,7 +156,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const event = validateIntentEvent(state, action.npc, intent, action.event ?? fallback.event);
         const chatted = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user" as const, text: action.text, npc: action.npc }, { role: "assistant" as const, text: action.reply || fallback.text, npc: action.npc }], intentHistory: [...state.currentRun.intentHistory, { npc: action.npc, intent, text: action.text }].slice(-20), lastPlayerInput: action.text } };
         next = applyWorldEvent(chatted, event);
-        if (intent === "PUSH_AUTHOR") next = { ...next, pollution: next.pollution + 1 };
+        if (intent === "WARN_AUTHOR") next = { ...next, currentRun: { ...next.currentRun, liveFeedPaused: true, authorPath: "outside" } };
+        if (intent === "PUSH_AUTHOR") next = { ...next, pollution: next.pollution + 1, currentRun: { ...next.currentRun, liveFeedPaused: false, authorPath: "inside" } };
+        if (intent === "ASK_PHOTO" || intent === "CHECK_DOOR") next = { ...next, currentRun: { ...next.currentRun, photoInspectionOpen: true, liveFeedPaused: true } };
         if (intent === "TELL_RETURN" && !next.currentRun.unlockedExitIds.includes("exit")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "exit"] } };
         if (intent === "DELETE_HINT" && !next.currentRun.unlockedExitIds.includes("delete")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "delete"] } };
         if (intent === "ASK_CHEN_DU" && !next.currentRun.seenClueIds.includes("C5")) next = { ...next, currentRun: { ...next.currentRun, seenClueIds: [...next.currentRun.seenClueIds, "C5"], draftAvailable: true } };
@@ -160,13 +169,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       break;
     case "OPEN_SEARCH_RESULT":
       if (!state.currentRun.searchResultIds.includes(action.resultId)) break;
-      next = { ...state, currentRun: { ...state.currentRun, searchResultIds: state.currentRun.searchResultIds, openedEditHistory: state.currentRun.openedEditHistory || action.resultId === "search-mingde", seenClueIds: action.resultId === "search-404" || action.resultId === "search-songyan" ? [...new Set([...state.currentRun.seenClueIds, "C2"])] : action.resultId === "search-mingde" ? [...new Set([...state.currentRun.seenClueIds, "C1"])] : action.resultId === "search-chendu" ? [...new Set([...state.currentRun.seenClueIds, "C5"])] : state.currentRun.seenClueIds, draftAvailable: state.currentRun.draftAvailable || ["search-404", "search-songyan", "search-mingde", "search-chendu"].includes(action.resultId) } };
+      next = { ...state, currentRun: { ...state.currentRun, searchResultIds: state.currentRun.searchResultIds, openedEditHistory: state.currentRun.openedEditHistory || action.resultId === "search-mingde", seenClueIds: action.resultId === "search-404" || action.resultId === "search-songyan" ? [...new Set([...state.currentRun.seenClueIds, "C2"])] : action.resultId === "search-mingde" ? [...new Set([...state.currentRun.seenClueIds, "C1"])] : action.resultId === "search-chendu" ? [...new Set([...state.currentRun.seenClueIds, "C5"])] : state.currentRun.seenClueIds, unlockedExitIds: ["search-404", "search-songyan"].includes(action.resultId) && !state.currentRun.unlockedExitIds.includes("death_404") ? [...state.currentRun.unlockedExitIds, "death_404"] : state.currentRun.unlockedExitIds, draftAvailable: state.currentRun.draftAvailable || ["search-404", "search-songyan", "search-mingde", "search-chendu"].includes(action.resultId) } };
       break;
     case "OPEN_EDIT_HISTORY":
       next = { ...state, currentRun: { ...state.currentRun, openedEditHistory: true } };
       break;
     case "COMPARE_EDIT_VERSION":
-      next = { ...state, currentRun: { ...state.currentRun, comparedEditVersionIds: state.currentRun.comparedEditVersionIds.includes(action.versionId) ? state.currentRun.comparedEditVersionIds : [...state.currentRun.comparedEditVersionIds, action.versionId] } };
+      next = { ...state, currentRun: { ...state.currentRun, comparedEditVersionIds: state.currentRun.comparedEditVersionIds.includes(action.versionId) ? state.currentRun.comparedEditVersionIds : [...state.currentRun.comparedEditVersionIds, action.versionId], seenClueIds: ["v2", "v4"].includes(action.versionId) && !state.currentRun.seenClueIds.includes("C4") ? [...state.currentRun.seenClueIds, "C4"] : state.currentRun.seenClueIds, draftAvailable: ["v2", "v4"].includes(action.versionId) || state.currentRun.draftAvailable, unlockedExitIds: ["v2", "v4"].includes(action.versionId) && !state.currentRun.unlockedExitIds.includes("delete") ? [...state.currentRun.unlockedExitIds, "delete"] : state.currentRun.unlockedExitIds } };
       break;
     case "OPEN_PROFILE":
       next = { ...state, currentRun: { ...state.currentRun, profileViews: state.currentRun.profileViews.includes(action.profileId) ? state.currentRun.profileViews : [...state.currentRun.profileViews, action.profileId] } };
@@ -178,8 +187,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, currentRun: { ...state.currentRun, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])] } };
       break;
     case "RELEASE_LIVE_EVENT":
-      if (state.currentRun.liveFeedReleasedIds.includes(action.eventId) || state.phase < 3) break;
+      if (state.currentRun.liveFeedReleasedIds.includes(action.eventId) || state.phase < 3 || !canReleaseLiveEvent(state, action.eventId)) break;
       next = { ...state, currentRun: { ...state.currentRun, liveFeedReleasedIds: [...state.currentRun.liveFeedReleasedIds, action.eventId], worldEvents: [...state.currentRun.worldEvents, { type: "ADD_COMMENT", commentId: action.eventId } as WorldEvent] } };
+      break;
+    case "OPEN_IMAGE_REGION":
+      next = { ...state, currentRun: { ...state.currentRun, photoInspectionOpen: true, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])] } };
       break;
   }
   if (next === state) return state;

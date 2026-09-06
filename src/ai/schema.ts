@@ -3,7 +3,7 @@ import { z } from "zod";
 export const aiResponseSchema = z.object({
   text: z.string().min(1).max(800),
   tone: z.string().max(80),
-  intent: z.enum(["WARN_AUTHOR", "PUSH_AUTHOR", "ASK_PHOTO", "CHECK_DOOR", "ASK_SONG_YAN", "ASK_DORM", "ASK_REGISTER", "ASK_MAP", "TELL_RETURN", "DELETE_HINT", "ASK_OCCUPANTS", "ASK_CHEN_DU"]),
+  intent: z.enum(["WARN_AUTHOR", "PUSH_AUTHOR", "ASK_PHOTO", "CHECK_DOOR", "ASK_SONG_YAN", "ASK_DORM", "ASK_REGISTER", "ASK_MAP", "TELL_RETURN", "DELETE_HINT", "ASK_OCCUPANTS", "ASK_CHEN_DU", "UNKNOWN", "SMALL_TALK"]),
   event: z.discriminatedUnion("type", [
     z.object({ type: z.literal("NONE") }),
     z.object({ type: z.literal("REVEAL_CLUE"), clueId: z.enum(["C1", "C2", "C3", "C4", "C5"]) }),

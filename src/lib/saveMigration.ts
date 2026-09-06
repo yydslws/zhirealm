@@ -32,6 +32,11 @@ export function migrateState(value: unknown): GameState | null {
   current.profileViews ??= [];
   current.imageInspections ??= [];
   current.lastPlayerInput ??= null;
+  current.commentsOpened ??= current.hasSeenUser404Comment;
+  current.foldedCountShifted ??= current.hasSeenUser404Comment;
+  current.liveFeedPaused ??= false;
+  current.authorPath ??= "outside";
+  current.photoInspectionOpen ??= false;
   if (state.previousRun) {
     const previous = state.previousRun as Partial<PreviousRun>;
     state.previousRun = {
