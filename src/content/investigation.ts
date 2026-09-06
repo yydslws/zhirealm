@@ -1,7 +1,7 @@
 export const searchResults: Record<string, { title: string; summary: string; clueId?: "C1" | "C2" | "C3" | "C4" | "C5" }> = {
-  "search-404": { title: "明德楼以前有 404 吗？", summary: "问题已删除", clueId: "C2" },
-  "search-songyan": { title: "有人认识宋砚吗？", summary: "账号已注销", clueId: "C2" },
-  "search-chendu": { title: "陈渡最后出现在哪里？", summary: "0 个回答", clueId: "C5" },
+  "search-404": { title: "明德楼以前有 404 吗？", summary: "问题已删除" },
+  "search-songyan": { title: "有人认识宋砚吗？", summary: "账号已注销" },
+  "search-chendu": { title: "陈渡最后出现在哪里？", summary: "0 个回答" },
   "search-mingde": { title: "明德楼四楼旧照片", summary: "3 个结果", clueId: "C1" },
 };
 

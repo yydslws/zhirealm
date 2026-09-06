@@ -1,16 +1,12 @@
+import { canonicalEventForIntent } from "@/src/ai/events";
 import type { GameState, IntentId, NpcId, WorldEvent } from "@/src/game/types";
 
-const clueEvents: Partial<Record<IntentId, WorldEvent>> = {
-  ASK_PHOTO: { type: "REVEAL_CLUE", clueId: "C3" },
-  CHECK_DOOR: { type: "REVEAL_CLUE", clueId: "C3" },
-  ASK_REGISTER: { type: "REVEAL_CLUE", clueId: "C2" },
-  ASK_MAP: { type: "REVEAL_CLUE", clueId: "C1" },
-};
+function sameEvent(left: WorldEvent, right: WorldEvent) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
 
 export function validateIntentEvent(state: GameState, npc: NpcId, intent: IntentId, event: WorldEvent = { type: "NONE" }): WorldEvent {
-  if (event.type === "REVEAL_CLUE" && clueEvents[intent]?.type === "REVEAL_CLUE" && clueEvents[intent].clueId === event.clueId) return event;
-  if (event.type === "REVEAL_CLUE" && intent === "ASK_SONG_YAN" && npc === "author" && event.clueId === "C2") return event;
-  if (event.type === "SHOW_ATTACHMENT" && ["photo-404", "register-404"].includes(event.attachmentId) && ["ASK_PHOTO", "CHECK_DOOR", "ASK_REGISTER"].includes(intent)) return event;
+  if (sameEvent(event, canonicalEventForIntent(intent, npc))) return event;
   if (event.type === "CHANGE_NPC_ATTITUDE" && event.npc === npc && Math.abs(event.delta) === 1) return event;
   if (event.type === "ADD_COMMENT" && intent === "PUSH_AUTHOR" && !state.currentRun.worldEvents.some((item) => item.type === "ADD_COMMENT" && item.commentId === event.commentId)) return event;
   if (event.type === "DELETE_COMMENT" && event.commentId.startsWith("live-")) return event;

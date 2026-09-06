@@ -48,7 +48,7 @@ describe("AI 边界", () => {
   it("离线兜底也返回可校验的意图事件", () => {
     const result = fallbackIntentEvent("ASK_SONG_YAN", "author");
     expect(result.intent).toBe("ASK_SONG_YAN");
-    expect(result.event).toEqual({ type: "REVEAL_CLUE", clueId: "C2" });
+    expect(result.event).toEqual({ type: "NONE" });
   });
 
   it("canonical event 由代码固定为附件而非任意线索", () => {

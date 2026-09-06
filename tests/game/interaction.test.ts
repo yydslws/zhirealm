@@ -16,12 +16,12 @@ describe("三层互动", () => {
     expect(state.currentRun.searchResultIds).toContain("search-404");
   });
 
-  it("搜索结果先打开页面，读完后才揭示线索", () => {
+  it("搜索结果只提供调查事实，不直接伪造登记表线索", () => {
     let state = gameReducer(createInitialState(), { type: "SEARCH", query: "宋砚", actionId: "search-songyan" });
     state = gameReducer(state, { type: "OPEN_SEARCH_RESULT", resultId: "search-songyan", actionId: "open-result" });
     expect(state.currentRun.seenClueIds).not.toContain("C2");
     state = gameReducer(state, { type: "READ_SEARCH_RESULT", resultId: "search-songyan", actionId: "read-result" });
-    expect(state.currentRun.seenClueIds).toContain("C2");
+    expect(state.currentRun.seenClueIds).not.toContain("C2");
   });
 
   it("404 回复不打开宿管，收到联系提示后才解锁私信通知", () => {
@@ -44,7 +44,8 @@ describe("三层互动", () => {
     state = gameReducer(state, { type: "OPEN_SEARCH_RESULT", resultId: "search-404", actionId: "gate-2" });
     state = gameReducer(state, { type: "READ_SEARCH_RESULT", resultId: "search-404", actionId: "gate-3" });
     expect(state.currentRun.draftAvailable).toBe(false);
-    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C3", actionId: "gate-spatial" });
+    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C1", actionId: "gate-spatial" });
+    state = gameReducer(state, { type: "VIEW_CLUE", clueId: "C2", actionId: "gate-history" });
     state = gameReducer(state, { type: "OPEN_COMMENTS", actionId: "gate-4" });
     state = gameReducer(state, { type: "SHIFT_FOLDED_COUNT", actionId: "gate-5" });
     state = gameReducer(state, { type: "OPEN_FOLDED_COMMENTS", actionId: "gate-6" });
@@ -56,7 +57,7 @@ describe("三层互动", () => {
       type: "CHAT_NPC", npc: "author", text: "你认识宋砚吗？", reply: "……你在哪看到这个名字的？",
       intent: "ASK_SONG_YAN", event: { type: "REVEAL_CLUE", clueId: "C2" }, actionId: "chat-songyan",
     });
-    expect(state.currentRun.seenClueIds).toContain("C2");
+    expect(state.currentRun.seenClueIds).not.toContain("C2");
   });
 
   it("意图由代码决定，AI 事件不能把拍照改成直接揭示线索", () => {

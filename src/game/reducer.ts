@@ -179,7 +179,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (intent === "ASK_PHOTO" || intent === "CHECK_DOOR") next = { ...next, currentRun: { ...next.currentRun, liveFeedPaused: true } };
         if (intent === "TELL_RETURN" && !next.currentRun.unlockedExitIds.includes("exit")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "exit"] } };
         if (intent === "DELETE_HINT" && !next.currentRun.unlockedExitIds.includes("delete")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "delete"] } };
-        if (intent === "ASK_CHEN_DU" && !next.currentRun.seenClueIds.includes("C5")) next = { ...next, currentRun: { ...next.currentRun, seenClueIds: [...next.currentRun.seenClueIds, "C5"], draftAvailable: true } };
         if (action.npc === "author" && action.text.trim()) next = { ...next, currentRun: { ...next.currentRun, hasRepliedAuthorComment: true, dmTriggerPending: true, conversationSeenNpcIds: next.currentRun.conversationSeenNpcIds.includes("author") ? next.currentRun.conversationSeenNpcIds : [...next.currentRun.conversationSeenNpcIds, "author"] } };
         next = { ...next, currentRun: { ...next.currentRun, draftAvailable: hasEnoughEvidence(next.currentRun) } };
       }
@@ -194,7 +193,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "READ_SEARCH_RESULT": {
       if (state.currentRun.searchResultPageId !== action.resultId) break;
       const read = state.currentRun.readSearchResultIds.includes(action.resultId) ? state.currentRun.readSearchResultIds : [...state.currentRun.readSearchResultIds, action.resultId];
-      const clueId = action.resultId === "search-404" || action.resultId === "search-songyan" ? "C2" : action.resultId === "search-mingde" ? "C1" : action.resultId === "search-chendu" ? "C5" : null;
+      const clueId = action.resultId === "search-mingde" ? "C1" : null;
       const unlockedExitIds: ExitId[] = ["search-404", "search-songyan"].includes(action.resultId) && !state.currentRun.unlockedExitIds.includes("death_404") ? [...state.currentRun.unlockedExitIds, "death_404"] : state.currentRun.unlockedExitIds;
       const run = { ...state.currentRun, readSearchResultIds: read, seenClueIds: clueId ? [...new Set([...state.currentRun.seenClueIds, clueId])] : state.currentRun.seenClueIds, unlockedExitIds };
       next = { ...state, scene: "investigation", currentRun: { ...run, draftAvailable: hasEnoughEvidence(run) } };

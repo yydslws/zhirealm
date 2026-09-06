@@ -24,6 +24,7 @@ export function ChatPanel({ phase, run, context, history, onMessage, fixedNpc, l
     try {
       const npcHistory = history.filter((item) => item.npc === npc);
       const response = await fetch("/api/game", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ npc, phase, run, message: text, context, history: npcHistory }) });
+      if (!response.ok) throw new Error(`AI ${response.status}`);
       const data = await response.json();
       const nextReply = typeof data.text === "string" ? data.text : "对话暂时不可用。";
       setReply(nextReply); onMessage(npc, text, nextReply, data.intent as IntentId, data.event as WorldEvent); setMessage("");

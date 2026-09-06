@@ -1,7 +1,7 @@
 import type { IntentId, NpcId, WorldEvent } from "@/src/game/types";
 
 export function canonicalEventForIntent(intent: IntentId, npc: NpcId): WorldEvent {
-  if (intent === "ASK_SONG_YAN" && ["author", "dormManager"].includes(npc)) return { type: "REVEAL_CLUE", clueId: "C2" };
+  if (intent === "ASK_SONG_YAN" && npc === "author") return { type: "NONE" };
   if (npc === "author" && (intent === "ASK_PHOTO" || intent === "CHECK_DOOR")) return { type: "SHOW_ATTACHMENT", attachmentId: "photo-404" };
   if (npc === "dormManager" && intent === "ASK_REGISTER") return { type: "SHOW_ATTACHMENT", attachmentId: "register-404" };
   if (npc === "author" && intent === "ASK_MAP") return { type: "REVEAL_CLUE", clueId: "C1" };

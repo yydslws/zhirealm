@@ -10,6 +10,13 @@ test("玩家可以从阅读走到草稿发布", async ({ page }) => {
   await page.getByRole("button", { name: "展开 18 条折叠评论" }).click();
   await expect(page.getByText(/终于有人回了/)).toBeVisible();
   await page.getByRole("button", { name: "回复" }).click();
+  await page.getByPlaceholder("输入一句话……").fill("先等等");
+  await page.getByRole("button", { name: "发送" }).click();
+  await expect(page.locator(".unread-dot")).toBeVisible({ timeout: 5000 });
+  await page.getByRole("button", { name: "打开私信" }).click();
+  await page.getByRole("button", { name: /2023年明德楼住宿登记表.pdf/ }).click();
+  await page.getByRole("dialog", { name: "原图详情" }).getByRole("button", { name: "关闭" }).click();
+  await page.getByRole("dialog", { name: "私信" }).getByRole("button", { name: "关闭" }).click();
   await page.getByLabel("搜索问题").fill("明德楼");
   await page.getByLabel("搜索问题").press("Enter");
   await page.getByRole("dialog", { name: "搜索结果" }).getByRole("button", { name: /明德楼四楼旧照片/ }).click();

@@ -11,6 +11,7 @@ async function publish(page: Page, ending: "death_404" | "exit" | "delete") {
   await page.getByRole("button", { name: "回复" }).click();
   await page.getByRole("button", { name: "打开原始附件" }).click();
   await page.getByRole("button", { name: "打开记录" }).nth(2).click();
+  await page.getByRole("button", { name: "打开记录" }).nth(1).click();
   if (ending === "delete") {
     await page.getByRole("button", { name: "第5次编辑" }).click();
     await page.getByRole("dialog", { name: "回答编辑记录" }).getByRole("button", { name: "比较版本" }).nth(1).click();
