@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { askDeepSeek, withOneRetry } from "@/src/ai/client";
 import { fallbackForNpc } from "@/src/ai/fallback";
+import { classifyIntent } from "@/src/ai/intents";
+import { fallbackIntentEvent } from "@/src/ai/events";
 import { buildPrompt, isForbiddenMessage } from "@/src/ai/prompt";
 import { aiRequestSchema } from "@/src/ai/schema";
 import { allowRequest } from "@/src/ai/rateLimit";
@@ -15,8 +17,9 @@ export async function POST(request: Request) {
   const { npc, phase, message, context, run } = input.data;
   const session = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "local";
   if (!allowRequest(session, run)) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-  if (isForbiddenMessage(message)) return NextResponse.json({ text: fallbackForNpc(npc), tone: "guarded", event: null });
+  const intent = classifyIntent(message, npc);
+  if (isForbiddenMessage(message)) return NextResponse.json({ ...fallbackIntentEvent(intent, npc), text: fallbackForNpc(npc), tone: "guarded" });
   const prompt = buildPrompt(npc, phase, context, message);
   const result = await withOneRetry(() => askDeepSeek(prompt));
-  return NextResponse.json(result ?? { text: fallbackForNpc(npc), tone: "fixed", event: null });
+  return NextResponse.json(result ?? fallbackIntentEvent(intent, npc));
 }

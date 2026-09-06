@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { ChatMessage, NpcId } from "@/src/game/types";
+import type { ChatMessage, NpcId, IntentId, WorldEvent } from "@/src/game/types";
 
 const npcs: Array<[NpcId, string]> = [["user404", "用户不存在"], ["dormManager", "宿管阿姨"], ["author", "南楼旧床板"]];
 
-export function ChatPanel({ phase, run, context, history, onMessage, fixedNpc, label = "自由对话" }: { phase: number; run: number; context: string[]; history: ChatMessage[]; onMessage: (npc: NpcId, text: string, reply: string) => void; fixedNpc?: NpcId; label?: string }) {
+export function ChatPanel({ phase, run, context, history, onMessage, fixedNpc, label = "自由对话" }: { phase: number; run: number; context: string[]; history: ChatMessage[]; onMessage: (npc: NpcId, text: string, reply: string, intent?: IntentId, event?: WorldEvent) => void; fixedNpc?: NpcId; label?: string }) {
   const [npc, setNpc] = useState<NpcId>(fixedNpc ?? "user404");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export function ChatPanel({ phase, run, context, history, onMessage, fixedNpc, l
       const response = await fetch("/api/game", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ npc, phase, run, message: text, context, history }) });
       const data = await response.json();
       const nextReply = typeof data.text === "string" ? data.text : "对话暂时不可用。";
-      setReply(nextReply); onMessage(npc, text, nextReply); setMessage("");
+      setReply(nextReply); onMessage(npc, text, nextReply, data.intent as IntentId, data.event as WorldEvent); setMessage("");
     } catch { setReply("网络断开了。固定内容仍然可以继续。"); }
     finally { setBusy(false); }
   }

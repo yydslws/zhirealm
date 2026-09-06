@@ -19,8 +19,13 @@ import { MobileDock } from "@/src/components/MobileDock";
 import { secondRunText } from "@/src/content/p07";
 import { ApiHealth } from "@/src/components/ApiHealth";
 import { RiskChoicePanel } from "@/src/components/RiskChoicePanel";
+import { SearchDrawer } from "@/src/components/SearchDrawer";
+import { EditHistoryDrawer } from "@/src/components/EditHistoryDrawer";
+import { ProfileSheet } from "@/src/components/ProfileSheet";
+import { ImageInspectSheet } from "@/src/components/ImageInspectSheet";
 import { useGameStore } from "@/src/store/gameStore";
 import { isDemoMode } from "@/src/lib/demoMode";
+import type { IntentId, WorldEvent } from "@/src/game/types";
 
 let actionCounter = 0;
 const id = () => `ui-${Date.now()}-${actionCounter++}`;
@@ -31,10 +36,22 @@ export default function Home() {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [authorChatOpen, setAuthorChatOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [imageId, setImageId] = useState<string | null>(null);
   useEffect(() => { state.hydrate(); setDemo(isDemoMode()); }, []);
+  useEffect(() => {
+    if (state.phase < 3 || state.currentRun.endingSettled) return;
+    const ids = ["author-arrived", "author-door", "author-deleted", "dorm-warning"] as const;
+    const next = ids.find((item) => !state.currentRun.liveFeedReleasedIds.includes(item));
+    if (!next) return;
+    const timer = window.setTimeout(() => action("RELEASE_LIVE_EVENT", { eventId: next }), 2600);
+    return () => window.clearTimeout(timer);
+  }, [state.phase, state.currentRun.liveFeedReleasedIds, state.currentRun.endingSettled]);
   const dispatch = state.dispatch;
   const action = (type: Parameters<typeof dispatch>[0]["type"], extra: Record<string, string> = {}) => dispatch({ type, actionId: id(), ...extra } as never);
-  const onChat = (npc: "user404" | "dormManager" | "author", text: string, reply: string) => action("CHAT_NPC", { npc, text, reply });
+  const onChat = (npc: "user404" | "dormManager" | "author", text: string, reply: string, intent?: IntentId, event?: WorldEvent) => dispatch({ type: "CHAT_NPC", npc, text, reply, intent, event, actionId: id() });
   const runToPublish = (unlockDelete = false) => { action("READ_ANSWER"); action("OPEN_FOLDED_COMMENTS"); action("REPLY_USER_404"); action("OPEN_DORM_MESSAGE"); action("VIEW_CLUE", { clueId: "C2" }); if (unlockDelete) action("CHOOSE_RISK", { node: "evidence", choice: "danger" }); action("OPEN_DRAFT"); action("PUBLISH_ANSWER"); };
   const forceDelete = () => { if (!state.currentRun.hasPublishedOwnAnswer) runToPublish(true); action("CHOOSE_ENDING", { endingId: "delete" }); action("CONFIRM_ENDING"); };
   const openMessages = () => { action("OPEN_DORM_MESSAGE"); setMessagesOpen(true); };
@@ -45,15 +62,15 @@ export default function Home() {
   const savedCount = state.currentRun.seenRuleIds.length + state.currentRun.seenClueIds.length;
   const unread = state.phase >= 3 && !state.currentRun.conversationSeenNpcIds.includes("dormManager");
   return <>
-    <CommunityHeader onMessages={openMessages} unread={unread} />
+    <CommunityHeader onMessages={openMessages} onSearch={(query) => { action("SEARCH", { query }); setSearchOpen(true); }} unread={unread} />
     <main className="layout">
       <div>
         {state.run > 1 && memory && <section className="card glitch memory-note">{memory}</section>}
         <QuestionHeader state={state} />
-        <AnswerCard state={state} onRead={() => action("READ_ANSWER")} onComments={() => action("OPEN_FOLDED_COMMENTS")} onAuthorChat={() => setAuthorChatOpen(true)} />
+        <AnswerCard state={state} onRead={() => action("READ_ANSWER")} onComments={() => action("OPEN_FOLDED_COMMENTS")} onAuthorChat={() => setAuthorChatOpen(true)} onProfile={() => { action("OPEN_PROFILE", { profileId: "author" }); setProfileOpen(true); }} onEditHistory={() => { action("OPEN_EDIT_HISTORY"); setEditOpen(true); }} />
         {authorChatOpen && <ChatPanel fixedNpc="author" label="给答主发私信" phase={state.phase} run={state.run} context={state.currentRun.seenClueIds} history={state.currentRun.conversationHistory} onMessage={onChat} />}
         {state.phase >= 2 && <CommentSection state={state} open={() => action("OPEN_FOLDED_COMMENTS")} reply={() => { action("REPLY_USER_404"); openMessages(); }} />}
-        {state.phase >= 3 && <EvidencePanel state={state} view={(clueId) => action("VIEW_CLUE", { clueId })} />}
+        {state.phase >= 3 && <EvidencePanel state={state} view={(clueId) => action("VIEW_CLUE", { clueId })} onImage={(id) => { action("OPEN_IMAGE", { imageId: id }); setImageId(id); }} />}
         {state.currentRun.draftAvailable && <DraftPanel state={state} open={() => action("OPEN_DRAFT")} publish={() => action("PUBLISH_ANSWER")} />}
         <OwnAnswerCard state={state} />
         {endingPanel}
@@ -67,5 +84,9 @@ export default function Home() {
     <MessageDrawer state={state} open={messagesOpen} close={() => setMessagesOpen(false)} phase={state.phase} onOpen={() => action("CHOOSE_RISK", { node: "dorm", choice: "danger" })} onReply={() => action("REPLY_USER_404")} onChat={onChat} />
     <SavedSheet state={state} open={savedOpen} close={() => setSavedOpen(false)} viewRule={(ruleId) => action("VIEW_RULE", { ruleId })} viewClue={(clueId) => action("VIEW_CLUE", { clueId })} chooseDanger={(node) => action("CHOOSE_RISK", { node, choice: "danger" })} />
     <MobileDock savedCount={savedCount} unread={unread} onSaved={() => setSavedOpen(true)} onMessages={openMessages} />
+    {searchOpen && <SearchDrawer state={state} close={() => setSearchOpen(false)} openResult={(resultId) => { action("OPEN_SEARCH_RESULT", { resultId }); setSearchOpen(false); }} />}
+    {editOpen && <EditHistoryDrawer state={state} close={() => setEditOpen(false)} compare={(versionId) => action("COMPARE_EDIT_VERSION", { versionId })} />}
+    {profileOpen && <ProfileSheet close={() => setProfileOpen(false)} />}
+    {imageId && <ImageInspectSheet imageId={imageId} close={() => setImageId(null)} inspect={(regionId) => action("INSPECT_IMAGE_REGION", { imageId, regionId })} />}
   </>;
 }

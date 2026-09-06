@@ -3,6 +3,7 @@ import { fallbackForNpc } from "@/src/ai/fallback";
 import { aiResponseSchema } from "@/src/ai/schema";
 import { withOneRetry } from "@/src/ai/client";
 import { allowRequest } from "@/src/ai/rateLimit";
+import { fallbackIntentEvent } from "@/src/ai/events";
 
 describe("AI 边界", () => {
   it("非法输出不会被当成游戏事件", () => {
@@ -25,5 +26,11 @@ describe("AI 边界", () => {
     const key = `test-${Date.now()}`;
     for (let i = 0; i < 30; i++) expect(allowRequest(key, 1)).toBe(true);
     expect(allowRequest(key, 1)).toBe(false);
+  });
+
+  it("离线兜底也返回可校验的意图事件", () => {
+    const result = fallbackIntentEvent("ASK_SONG_YAN", "author");
+    expect(result.intent).toBe("ASK_SONG_YAN");
+    expect(result.event).toEqual({ type: "REVEAL_CLUE", clueId: "C2" });
   });
 });

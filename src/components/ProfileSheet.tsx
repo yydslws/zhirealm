@@ -1,0 +1,2 @@
+import { profile } from "@/src/content/investigation";
+export function ProfileSheet({ close }: { close: () => void }) { return <div className="sheet-backdrop" onClick={close}><section className="sheet" role="dialog" aria-label="答主主页" onClick={(e) => e.stopPropagation()}><div className="sheet-head"><h2>{profile.name}</h2><button className="ghost" onClick={close}>关闭</button></div><p>{profile.bio}</p>{profile.activities.map((item) => <p className="saved-item" key={item}>{item}</p>)}</section></div>; }

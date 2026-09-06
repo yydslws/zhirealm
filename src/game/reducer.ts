@@ -1,6 +1,9 @@
 import { buildDraft } from "@/src/game/derive";
 import { canChooseEnding, canPublish } from "@/src/game/guards";
-import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskChoice, RiskNodeId } from "@/src/game/types";
+import { applyWorldEvent, validateIntentEvent } from "@/src/game/engine";
+import { fallbackIntentEvent } from "@/src/ai/events";
+import { classifyIntent } from "@/src/ai/intents";
+import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskChoice, RiskNodeId, WorldEvent } from "@/src/game/types";
 
 const initialRun = (): CurrentRun => ({
   hasReadP01Answer: false, nightNoticeVisible: false, foldedCommentCount: 17,
@@ -12,10 +15,11 @@ const initialRun = (): CurrentRun => ({
   ownAnswerBindingActive: false, phase06Available: false, endingActionLock: false, endingSettled: false,
   endingId: null, endingEventId: null, endingScreenIndex: 0, pendingEndingId: null,
   bAutoCommentAdded: false, bAutoCommentId: null, questionAnswerCount: 118, actionIds: [], riskChoices: {}, riskConsequences: {}, unlockedExitIds: [], meltdown: false, meltdownReason: null, retryAvailable: false,
+  intentHistory: [], worldEvents: [], npcAttitude: {}, liveFeedReleasedIds: [], searchHistory: [], searchResultIds: [], openedEditHistory: false, comparedEditVersionIds: [], profileViews: [], imageInspections: [], lastPlayerInput: null,
 });
 
 export function createInitialState(): GameState {
-  return { saveVersion: 1, saveRevision: 0, run: 1, scene: "question", phase: 1, gameTime: "01:57", timeStopped: false, pollution: 0, currentRun: initialRun(), previousRun: null };
+  return { saveVersion: 2, saveRevision: 0, run: 1, scene: "question", phase: 1, gameTime: "01:57", timeStopped: false, pollution: 0, currentRun: initialRun(), previousRun: null };
 }
 
 const mark = (state: GameState, actionId: string): GameState => ({
@@ -30,7 +34,7 @@ function summarizeRun(state: GameState, r = state.currentRun): PreviousRun {
     answerDeleted: r.ownAnswerDeleted, bindingReleased: !r.ownAnswerBindingActive,
     metUser404Seen: r.hasSeenUser404Comment, user404Replied: r.hasRepliedUser404,
     hasSeenDormOpening: r.conversationSeenNpcIds.includes("dormManager"), hasChattedDormManager: r.conversationHistory.some((m) => m.role === "user"),
-    seenClueIds: [...r.seenClueIds], firstTopics: { user404: r.user404FirstTopic, dormManager: r.dormManagerFirstTopic, author: r.authorFirstTopic },
+    seenClueIds: [...r.seenClueIds], firstTopics: { user404: r.user404FirstTopic, dormManager: r.dormManagerFirstTopic, author: r.authorFirstTopic }, playerInputs: r.intentHistory.slice(-3).map((item) => item.text), lastIntent: r.intentHistory.at(-1)?.intent ?? null,
   };
 }
 
@@ -47,6 +51,11 @@ const consequenceForRisk: Record<RiskNodeId, Record<RiskChoice, string>> = {
   evidence: { safe: "你只保留了能确认来源的证据。", danger: "模糊证据里出现了宋砚的名字，随后又被划掉。" },
   draft: { safe: "你把草稿留在这里，先回去核实。", danger: "草稿自动补完了最后一句：不要让它知道你已经看见。" },
 };
+
+function resultIds(query: string) {
+  const q = query.toLowerCase();
+  return [q.includes("404") && "search-404", q.includes("宋砚") && "search-songyan", q.includes("陈渡") && "search-chendu", q.includes("明德楼") && "search-mingde"].filter(Boolean) as string[];
+}
 
 function settleMeltdown(state: GameState): GameState {
   if (state.pollution < 4 || state.currentRun.meltdown || state.currentRun.endingSettled) return state;
@@ -134,7 +143,43 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       next = { ...state, previousRun: null };
       break;
     case "CHAT_NPC":
-      next = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user", text: action.text, npc: action.npc }, { role: "assistant", text: action.reply, npc: action.npc }] } };
+      {
+        const intent = action.intent ?? classifyIntent(action.text, action.npc);
+        const fallback = fallbackIntentEvent(intent, action.npc);
+        const event = validateIntentEvent(state, action.npc, intent, action.event ?? fallback.event);
+        const chatted = { ...state, currentRun: { ...state.currentRun, conversationSeenNpcIds: state.currentRun.conversationSeenNpcIds.includes(action.npc) ? state.currentRun.conversationSeenNpcIds : [...state.currentRun.conversationSeenNpcIds, action.npc], conversationHistory: [...state.currentRun.conversationHistory, { role: "user" as const, text: action.text, npc: action.npc }, { role: "assistant" as const, text: action.reply || fallback.text, npc: action.npc }], intentHistory: [...state.currentRun.intentHistory, { npc: action.npc, intent, text: action.text }].slice(-20), lastPlayerInput: action.text } };
+        next = applyWorldEvent(chatted, event);
+        if (intent === "PUSH_AUTHOR") next = { ...next, pollution: next.pollution + 1 };
+        if (intent === "TELL_RETURN" && !next.currentRun.unlockedExitIds.includes("exit")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "exit"] } };
+        if (intent === "DELETE_HINT" && !next.currentRun.unlockedExitIds.includes("delete")) next = { ...next, currentRun: { ...next.currentRun, unlockedExitIds: [...next.currentRun.unlockedExitIds, "delete"] } };
+        if (intent === "ASK_CHEN_DU" && !next.currentRun.seenClueIds.includes("C5")) next = { ...next, currentRun: { ...next.currentRun, seenClueIds: [...next.currentRun.seenClueIds, "C5"], draftAvailable: true } };
+      }
+      break;
+    case "SEARCH":
+      next = { ...state, currentRun: { ...state.currentRun, searchHistory: [...state.currentRun.searchHistory, action.query].slice(-20), searchResultIds: resultIds(action.query) } };
+      break;
+    case "OPEN_SEARCH_RESULT":
+      if (!state.currentRun.searchResultIds.includes(action.resultId)) break;
+      next = { ...state, currentRun: { ...state.currentRun, searchResultIds: state.currentRun.searchResultIds, openedEditHistory: state.currentRun.openedEditHistory || action.resultId === "search-mingde", seenClueIds: action.resultId === "search-404" || action.resultId === "search-songyan" ? [...new Set([...state.currentRun.seenClueIds, "C2"])] : action.resultId === "search-mingde" ? [...new Set([...state.currentRun.seenClueIds, "C1"])] : action.resultId === "search-chendu" ? [...new Set([...state.currentRun.seenClueIds, "C5"])] : state.currentRun.seenClueIds, draftAvailable: state.currentRun.draftAvailable || ["search-404", "search-songyan", "search-mingde", "search-chendu"].includes(action.resultId) } };
+      break;
+    case "OPEN_EDIT_HISTORY":
+      next = { ...state, currentRun: { ...state.currentRun, openedEditHistory: true } };
+      break;
+    case "COMPARE_EDIT_VERSION":
+      next = { ...state, currentRun: { ...state.currentRun, comparedEditVersionIds: state.currentRun.comparedEditVersionIds.includes(action.versionId) ? state.currentRun.comparedEditVersionIds : [...state.currentRun.comparedEditVersionIds, action.versionId] } };
+      break;
+    case "OPEN_PROFILE":
+      next = { ...state, currentRun: { ...state.currentRun, profileViews: state.currentRun.profileViews.includes(action.profileId) ? state.currentRun.profileViews : [...state.currentRun.profileViews, action.profileId] } };
+      break;
+    case "OPEN_IMAGE":
+      next = { ...state, currentRun: { ...state.currentRun, imageInspections: state.currentRun.imageInspections.includes(action.imageId) ? state.currentRun.imageInspections : [...state.currentRun.imageInspections, action.imageId] } };
+      break;
+    case "INSPECT_IMAGE_REGION":
+      next = { ...state, currentRun: { ...state.currentRun, imageInspections: [...new Set([...state.currentRun.imageInspections, `${action.imageId}:${action.regionId}`])] } };
+      break;
+    case "RELEASE_LIVE_EVENT":
+      if (state.currentRun.liveFeedReleasedIds.includes(action.eventId) || state.phase < 3) break;
+      next = { ...state, currentRun: { ...state.currentRun, liveFeedReleasedIds: [...state.currentRun.liveFeedReleasedIds, action.eventId], worldEvents: [...state.currentRun.worldEvents, { type: "ADD_COMMENT", commentId: action.eventId } as WorldEvent] } };
       break;
   }
   if (next === state) return state;
