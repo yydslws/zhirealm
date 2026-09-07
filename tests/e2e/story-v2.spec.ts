@@ -11,6 +11,7 @@ test("Story V2 completes END_A and survives reload", async ({ page }) => {
   await expect(page.getByText("这条回复的时间早于你的评论。")).toBeVisible();
   await page.getByRole("button", { name: /我这里现在是/ }).click();
   await page.getByRole("button", { name: /告诉他今天是/ }).click();
+  await page.getByRole("button", { name: "继续" }).click();
   await page.getByLabel("三位门牌号").fill("403");
   await page.getByRole("button", { name: "让他试试" }).click();
   await page.getByLabel("三位门牌号").fill("404");
@@ -39,7 +40,7 @@ test("Story V2 completes END_A and survives reload", async ({ page }) => {
 test("END_B can return to the final choice and then complete END_A", async ({ page }) => {
   let state = initial();
   const actions = [
-    { type: "COMMENT", value: "?" }, { type: "CLOCK", value: "16:58" }, { type: "DATE" },
+    { type: "COMMENT", value: "?" }, { type: "CLOCK", value: "16:58" }, { type: "DATE" }, { type: "DATE_CONTINUE" },
     { type: "DOOR", value: "404" }, { type: "ROOM" }, { type: "MUTATE" }, { type: "HISTORY" }, { type: "HISTORY" },
     { type: "NAME", value: "陈渡" }, { type: "NOTE" }, { type: "OUTSIDE" }, { type: "FINAL_DATE", value: state.baseDate },
   ] as const;

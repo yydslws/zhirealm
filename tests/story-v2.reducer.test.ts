@@ -17,6 +17,8 @@ describe("story v2 reducer", () => {
     state = reduce(state, act("COMMENT", "后续呢？"));
     state = reduce(state, act("CLOCK", "16:58"));
     state = reduce(state, act("DATE"));
+    expect(state.stage).toBe("dateReveal");
+    state = reduce(state, act("DATE_CONTINUE"));
     state = reduce(state, act("DOOR", "403"));
     expect(state.doorHintLevel).toBe(0);
     state = reduce(state, act("DOOR_HINT"));
@@ -35,5 +37,10 @@ describe("story v2 reducer", () => {
     state = reduce(state, act("B_BACK"));
     expect(state.stage).toBe("choice");
     expect(state.comment).toBe("后续呢？");
+  });
+
+  it("restarts from the opening after either completed ending", () => {
+    const state = { ...initial(), stage: "aDone" as const, ending: "A" as const };
+    expect(reduce(state, act("RESTART")).stage).toBe("opening");
   });
 });
