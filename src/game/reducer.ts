@@ -7,6 +7,7 @@ import { canReleaseLiveEvent } from "@/src/game/liveFeed";
 import type { CurrentRun, EndingId, ExitId, GameAction, GameState, PreviousRun, RiskChoice, RiskNodeId, WorldEvent } from "@/src/game/types";
 
 const initialRun = (): CurrentRun => ({
+  v2Phase: 0, v2AuthorReply: false, v2DateConfirmed: false, v2Materials: [], v2Ending: null,
   hasReadP01Answer: false, nightNoticeVisible: false, foldedCommentCount: 17,
   hasSeenAnomalyComment: false, hasRepliedAuthorComment: false, seenRuleIds: [], seenClueIds: [],
   conversationSeenNpcIds: [], dormManagerFirstTopic: null, authorFirstTopic: null,
@@ -73,6 +74,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (state.currentRun.endingSettled && !["ADVANCE_ENDING_SCREEN", "REENTER_NEXT_RUN", "RETRY_AFTER_MELTDOWN", "RETURN_TO_QUESTION", "CANCEL_ACTION"].includes(action.type)) return state;
   let next = state;
   switch (action.type) {
+    case "V2_READ_ANSWER":
+      next = { ...state, currentRun: { ...state.currentRun, v2Phase: Math.max(1, state.currentRun.v2Phase) } };
+      break;
+    case "V2_REPLY":
+      if (state.currentRun.v2Phase >= 1 && action.text.trim()) next = { ...state, currentRun: { ...state.currentRun, v2Phase: 2, v2PlayerComment: action.text, v2AuthorReply: true } };
+      break;
+    case "V2_CONFIRM_DATE":
+      if (state.currentRun.v2Phase >= 2) next = { ...state, currentRun: { ...state.currentRun, v2Phase: 3, v2DateConfirmed: true } };
+      break;
+    case "V2_VIEW_MATERIAL": {
+      const order = ["404", "住宿登记表", "原回答改写", "编辑记录", "宋砚旧便签"];
+      if (order[state.currentRun.v2Materials.length] !== action.material) break;
+      const materials = state.currentRun.v2Materials.includes(action.material) ? state.currentRun.v2Materials : [...state.currentRun.v2Materials, action.material];
+      next = { ...state, currentRun: { ...state.currentRun, v2Materials: materials, v2Phase: Math.max(state.currentRun.v2Phase, materials.length >= 5 ? 5 : 4) } };
+      break;
+    }
+    case "V2_CHOOSE_ENDING":
+      if (state.currentRun.v2Phase >= 5 && state.currentRun.v2Materials.length >= 5) next = { ...state, currentRun: { ...state.currentRun, v2Phase: 6, v2Ending: action.ending } };
+      break;
     case "READ_ANSWER":
       next = { ...state, phase: Math.max(state.phase, 1), currentRun: { ...state.currentRun, hasReadP01Answer: true } };
       break;

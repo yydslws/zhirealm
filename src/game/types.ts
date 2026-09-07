@@ -23,6 +23,12 @@ export type LiveEvent = { id: LiveEventId; actor: NpcId; surface: "comment" | "d
 export type ChatMessage = { role: "user" | "assistant"; text: string; npc: NpcId | "unknown"; attachmentId?: string };
 
 export type CurrentRun = {
+  v2Phase: number;
+  v2PlayerComment?: string;
+  v2AuthorReply: boolean;
+  v2DateConfirmed: boolean;
+  v2Materials: string[];
+  v2Ending: "END_A" | "END_B" | null;
   hasReadP01Answer: boolean;
   nightNoticeVisible: boolean;
   foldedCommentCount: number;
@@ -120,6 +126,11 @@ export type GameState = {
 };
 
 export type GameAction =
+  | { type: "V2_READ_ANSWER"; actionId: string }
+  | { type: "V2_REPLY"; text: string; actionId: string }
+  | { type: "V2_CONFIRM_DATE"; actionId: string }
+  | { type: "V2_VIEW_MATERIAL"; material: string; actionId: string }
+  | { type: "V2_CHOOSE_ENDING"; ending: "END_A" | "END_B"; actionId: string }
   | { type: "READ_ANSWER"; actionId: string }
   | { type: "OPEN_FOLDED_COMMENTS"; actionId: string }
   | { type: "REPLY_AUTHOR_COMMENT"; actionId: string }
