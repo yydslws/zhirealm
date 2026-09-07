@@ -1,0 +1,5 @@
+const half = (value:string) => value.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248)).trim();
+export function isValidClock(value:string){return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(half(value));}
+export function normalizeDoorAnswer(value:string){return half(value).replace(/\s+/g,"").replace(/(?:室|号房?)$/,"");}
+export function isDoorAnswer(value:string){return normalizeDoorAnswer(value)==="404";}
+export function parseDateAnswer(value:string,baseDate:string){const input=half(value);let y:number|undefined,m:number,d:number;let x=input.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);if(x){y=+x[1];m=+x[2];d=+x[3];}else if((x=input.match(/^(\d{1,2})月(\d{1,2})(?:日|号)$/))){m=+x[1];d=+x[2];}else if((x=input.match(/^(\d{1,2})[/-](\d{1,2})$/))){m=+x[1];d=+x[2];}else return false;const [by,bm,bd]=baseDate.split("-").map(Number);if(y!==undefined&&y!==by||m!==bm||d!==bd)return false;const date=new Date(Date.UTC(by,m-1,d));return date.getUTCFullYear()===by&&date.getUTCMonth()===m-1&&date.getUTCDate()===d;}
