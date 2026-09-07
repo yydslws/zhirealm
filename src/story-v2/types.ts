@@ -1,0 +1,3 @@
+export type Stage = "opening"|"clock"|"date"|"door"|"room"|"mutated"|"history"|"name"|"note"|"outside"|"datePuzzle"|"choice"|"a"|"b"|"bConfirm";
+export type State = { stage: Stage; baseDate: string; entryClock: string; comment: string|null; reportedClock: string|null; doorAttempts:number; nameAttempts:number; dateAttempts:number; seenMaterials:string[]; answerVersion:"original"|"mutated"|"endingA"|"endingB"; ending:"A"|"B"|null; bSnapshot?: State };
+export type Action = { type:"READ"|"COMMENT"|"CLOCK"|"DATE"|"DOOR"|"ROOM"|"MUTATE"|"HISTORY"|"NAME"|"NOTE"|"OUTSIDE"|"FINAL_DATE"|"CHOICE_A"|"CHOICE_B"|"B_CONFIRM"|"B_BACK"|"HYDRATE"; value?:string };
